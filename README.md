@@ -1,5 +1,7 @@
 # OmniSeq
 
+[![R-CMD-check](https://github.com/nizarberrimgeno-prog/OmniSeq/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/nizarberrimgeno-prog/OmniSeq/actions/workflows/R-CMD-check.yaml)
+
 Multi-omics RNA-seq analysis with transposable element (TE) integration.
 
 OmniSeq wraps DESeq2, clusterProfiler, GSVA, WGCNA, mixOmics, decoupleR, and
