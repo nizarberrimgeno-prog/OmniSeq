@@ -334,15 +334,18 @@ packageVersion_safe <- function() {
   )
 }
 
+# TE class vocabulary shared by .detect_data_type() and .filter_coding_genes()
+# — keep this as the single source of truth so the two can't drift apart.
+.OMNISEQ_TE_CLASSES <- c("SINE", "LINE", "ERV", "Retroposon", "DNA", "RC",
+                         "Satellite", "rRNA", "scRNA", "snRNA", "tRNA", "Unknown")
+
 #' @keywords internal
 .detect_data_type <- function(count_matrix) {
   # Strict TE locus ID format: "<number>:<TEClass>:<Family>"
   # e.g. "1000:SINE:MIRb", "1000014:ERV:MSTB"
   # Simple colon check is too broad — gene annotation strings also contain colons.
   sample_rows <- head(rownames(count_matrix), 100)
-  te_classes  <- c("SINE", "LINE", "ERV", "Retroposon", "DNA", "RC",
-                   "Satellite", "rRNA", "scRNA", "snRNA", "tRNA", "Unknown")
-  te_pattern  <- paste0("^[0-9]+:(", paste(te_classes, collapse = "|"), "):")
+  te_pattern  <- paste0("^[0-9]+:(", paste(.OMNISEQ_TE_CLASSES, collapse = "|"), "):")
   n_match     <- sum(grepl(te_pattern, sample_rows))
   if (n_match / length(sample_rows) >= 0.8) "TE" else "gene"
 }
@@ -383,9 +386,7 @@ packageVersion_safe <- function() {
 #' @keywords internal
 .filter_coding_genes <- function(gene_names) {
   # Always keep TE locus IDs
-  te_classes <- c("SINE", "LINE", "ERV", "Retroposon", "DNA", "RC",
-                  "Satellite", "rRNA", "scRNA", "snRNA", "tRNA", "Unknown")
-  te_pattern <- paste0("^[0-9]+(:(", paste(te_classes, collapse = "|"), ")):")
+  te_pattern <- paste0("^[0-9]+(:(", paste(.OMNISEQ_TE_CLASSES, collapse = "|"), ")):")
   is_te      <- grepl(te_pattern, gene_names)
 
   # Keep features that:
