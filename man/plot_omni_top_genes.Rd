@@ -19,7 +19,8 @@ plot_omni_top_genes(
 
 \item{pval_thresh}{Adjusted p-value threshold. Default: \code{0.05}.}
 
-\item{color_by}{Character. Metadata column for point color.}
+\item{color_by}{Character. Metadata column for point color. If \code{NULL}
+(default), auto-detected from the active contrast name.}
 
 \item{shape_by}{Optional metadata column for point shape.}
 }
@@ -29,4 +30,7 @@ A ggplot object (returned invisibly).
 \description{
 Individual sample points for the top N most significant DEGs, one panel
 per gene. More honest than a heatmap for communicating single-gene effects.
+X-axis automatically uses the grouping column relevant to the active
+contrast — e.g. Genotype for "TLR7 vs UNC93B1", not the primary condition
+column.
 }

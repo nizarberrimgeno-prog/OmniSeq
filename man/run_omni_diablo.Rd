@@ -28,7 +28,9 @@ Default: \code{"Condition"}.}
 \item{ncomp}{Integer. Number of components. Default: \code{2}.}
 
 \item{keepX}{Named list with elements \code{"genes"} and \code{"TEs"}, each a vector
-of length \code{ncomp}. Default: \code{list(genes = c(20, 20), TEs = c(10, 10))}.}
+of length \code{ncomp}. Automatically capped to the number of available
+features per block — so passing \code{c(20, 20)} for a TE block with only
+6 families is safe. Default: \code{list(genes = c(20, 20), TEs = c(10, 10))}.}
 
 \item{near_zero_var}{Logical. Filter near-zero-variance features before
 fitting. Strongly recommended — prevents crash on constant features.

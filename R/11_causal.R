@@ -74,6 +74,10 @@
 #'   Default: `"IRG_S_Score"`.
 #' @param covariates Character vector. Additional covariates to include in
 #'   both mediator and outcome models. Default: `NULL`.
+#' @param cell_state_scores Optional data.frame with a `Sample` column plus
+#'   additional score columns (e.g. scRNA-derived cell state burden from
+#'   MuSiC/SAVI deconvolution) to merge in as candidate mediators/outcomes.
+#'   Default: `NULL`.
 #' @param boot Logical. Use bootstrap for confidence intervals. Default:
 #'   `TRUE`.
 #' @param boot_sims Integer. Number of bootstrap simulations. Default: `1000`.

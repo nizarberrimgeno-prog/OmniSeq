@@ -30,12 +30,21 @@
 
 #' Plot PCA with Optional Covariate Correction
 #'
+#' Computes PCA on the top variable features from the cached VST matrix.
+#' If covariates are present in the model, they are regressed out using
+#' `limma::removeBatchEffect()` before PCA so the plot reflects the primary
+#' biological condition. Point shape is automatically mapped to Sex if a
+#' Sex column is detected in the metadata.
+#'
 #' @param obj A validated OmniSeq object with a fitted model.
 #' @param ntop Integer. Number of top variable features to use. Default: 500.
 #' @param label Logical. Label sample points with their names. Default: `TRUE`.
-#' @param ellipse Logical. Draw 95% confidence ellipses per group. Default: `TRUE`.
-#' @param color_by Character. Metadata column to color points by.
-#' @param shape_by Character. Metadata column for point shape.
+#' @param ellipse Logical. Draw 95% confidence ellipses per group. Suppressed
+#'   automatically if any group has fewer than 3 samples. Default: `TRUE`.
+#' @param color_by Character. Metadata column to color points by. Defaults to
+#'   the primary condition.
+#' @param shape_by Character. Metadata column to map to point shape. Auto-
+#'   detected from Sex/sex/gender columns if `NULL`. Set to `NA` to disable.
 #'
 #' @return A ggplot object (returned invisibly).
 #' @export
@@ -249,7 +258,7 @@ plot_omni_volcano <- function(obj,
 #' Plot MA Plot
 #'
 #' @param obj A validated OmniSeq object with DE results.
-#' @param pval_thresh Adjusted p-value threshold. Default: `0.05`.
+#' @param pval_thresh Adjusted p-value threshold for coloring. Default: `0.05`.
 #' @param top_n Integer. Number of top significant genes to label. Default: `10`.
 #'
 #' @return A ggplot object (returned invisibly).
@@ -314,14 +323,18 @@ plot_omni_ma <- function(obj,
 
 #' Plot Annotated Heatmap of Top DEGs
 #'
+#' Generates a pheatmap of the top significant DEGs from the active contrast,
+#' using the cached VST matrix. Automatically subsets samples to only those
+#' involved in the active contrast when possible.
+#'
 #' @param obj A validated OmniSeq object with DE results.
 #' @param ntop Integer. Number of top significant genes to plot. Default: `50`.
 #' @param pval_thresh Adjusted p-value threshold. Default: `0.05`.
 #' @param color_up Color for high expression. Default: `"#B2182B"`.
 #' @param color_down Color for low expression. Default: `"#2166AC"`.
-#' @param cluster_rows Logical. Default: `TRUE`.
-#' @param cluster_cols Logical. Default: `TRUE`.
-#' @param show_colnames Logical. Default: `TRUE`.
+#' @param cluster_rows Logical. Cluster genes. Default: `TRUE`.
+#' @param cluster_cols Logical. Cluster samples. Default: `TRUE`.
+#' @param show_colnames Logical. Show sample names. Default: `TRUE`.
 #' @param custom_genes Optional character vector of specific genes to plot.
 #' @param title Optional custom title string.
 #'
@@ -415,6 +428,8 @@ plot_omni_heatmap <- function(obj,
 # =============================================================================
 
 #' Plot Basic QC Metrics
+#'
+#' Barplots of library size or detected feature count per sample.
 #'
 #' @param obj A validated OmniSeq object with QC metrics.
 #' @param plot_type Character. Either `"library_size"` or `"detected_genes"`.
@@ -628,6 +643,9 @@ plot_omni_qc_advanced <- function(obj,
 
 #' Plot P-value Histogram (Model Diagnostic)
 #'
+#' A well-specified model shows a flat distribution with a spike near 0.
+#' A spike near 1 suggests model problems.
+#'
 #' @param obj A validated OmniSeq object with DE results.
 #' @param bins Integer. Number of histogram bins. Default: `40`.
 #'
@@ -680,9 +698,10 @@ plot_omni_pvalue_hist <- function(obj, bins = 40) {
 #' Plot Normalised Counts for Top DEGs
 #'
 #' Individual sample points for the top N most significant DEGs, one panel
-#' per gene. X-axis automatically uses the grouping column relevant to the
-#' active contrast — e.g. Genotype for "TLR7 vs UNC93B1", not the primary
-#' condition column.
+#' per gene. More honest than a heatmap for communicating single-gene effects.
+#' X-axis automatically uses the grouping column relevant to the active
+#' contrast — e.g. Genotype for "TLR7 vs UNC93B1", not the primary condition
+#' column.
 #'
 #' @param obj A validated OmniSeq object with DE results.
 #' @param n Integer. Number of top genes to plot. Default: `12`.

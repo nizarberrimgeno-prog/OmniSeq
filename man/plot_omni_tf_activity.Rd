@@ -4,20 +4,26 @@
 \alias{plot_omni_tf_activity}
 \title{Plot Top Activated and Repressed Transcription Factors}
 \usage{
-plot_omni_tf_activity(obj, n = 15, group = NULL)
+plot_omni_tf_activity(obj, n = 30, group = NULL, min_regulon = 15L)
 }
 \arguments{
 \item{obj}{A validated OmniSeq object with TF results.}
 
 \item{n}{Integer. Number of top TFs per direction to show. Default: \code{15}.}
 
-\item{group}{Character. Condition group to plot. Defaults to the
-non-reference group (e.g. \code{"Patient"}).}
+\item{group}{Character. For samples mode: condition group to plot.
+Defaults to the non-reference group. Ignored in contrast mode.}
+
+\item{min_regulon}{Integer. Minimum regulon size to include a TF.
+Removes noise TFs with very few targets (e.g. 5-gene regulons that score
+high by chance). Default: \code{15}. Set to \code{0} to disable.}
 }
 \value{
 A ggplot object (returned invisibly).
 }
 \description{
-Displays the top N most activated and repressed TFs as a horizontal
-barplot of mean activity scores, colored by direction.
+For contrast mode: draws from \code{tf_contrast_cache} — genuinely different
+per contrast. For samples mode: draws from \code{tf_sample_activity}.
+Color scale is clamped to the range -5 to 5 to prevent extreme outliers
+from compressing all other TFs to grey.
 }

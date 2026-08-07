@@ -3,22 +3,27 @@
 \docType{data}
 \name{omniseq_isgs_extended}
 \alias{omniseq_isgs_extended}
-\title{OmniSeq Extended Type I Interferon Signature (50 genes)}
+\title{OmniSeq Extended Type I Interferon Signature (Hallmark IFNA Response)}
 \format{
-An object of class \code{character} of length 51.
+An object of class \code{character} of length 138.
 }
 \source{
-Mostafavi S et al. (2016). Parsing the Interferon Transcriptional
-Network and Its Disease Associations. Cell. PMID: 27851914.
-Supplementary Table S1 (top 50 IFN-stimulated genes).
+Core IRG-S: Crow YJ et al. (2015). PMID: 26250437.
+Extended set: MSigDB Hallmark HALLMARK_INTERFERON_ALPHA_RESPONSE.
 }
 \usage{
 omniseq_isgs_extended
 }
 \description{
-A broader interferon-stimulated gene set derived from multiple IFN-alpha
-and IFN-beta stimulation studies. Captures a wider range of ISGs beyond
-the core IRG-S panel, useful when the interferon response is particularly
-dominant or when studying IFN pathway heterogeneity.
+A broad interferon-stimulated gene set combining the core IRG-S 28-gene
+panel with additional genes from the MSigDB Hallmark
+HALLMARK_INTERFERON_ALPHA_RESPONSE collection. This extended set includes
+genuinely significant ISGs such as HLA-A/B/C, PSMB8/9, TAP1, B2M, IRF1,
+ADAR, and IL15 — genes that are significant in interferonopathy datasets
+and will visually differentiate masked from unmasked analyses.
+}
+\details{
+All 28 core IRG-S genes are retained. Use this mask when the standard
+isgs_28 mask produces results that still appear dominated by IFN biology.
 }
 \keyword{datasets}

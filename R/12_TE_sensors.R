@@ -68,6 +68,10 @@
 #'   score. Defaults to built-in curated list.
 #' @param min_loci Integer. Minimum number of loci required for a sensor
 #'   score to be computed. Default: `5`.
+#' @param sc_deconv Optional matrix/data.frame of samples x cell states from
+#'   MuSiC deconvolution (e.g. using SAVI as reference). When provided and an
+#'   IFN/monocyte-like column is present, an IFN monocyte burden score is
+#'   computed alongside the TE sensor scores. Default: `NULL`.
 #'
 #' @return The gene_obj with sensor scores stored in `$sensor_scores`.
 #' @export

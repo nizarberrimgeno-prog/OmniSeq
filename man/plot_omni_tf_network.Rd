@@ -6,16 +6,18 @@
 \usage{
 plot_omni_tf_network(
   obj,
-  n_tfs = 10,
+  n_tfs = 25,
   n_targets = 5,
   plot_type = c("static", "interactive"),
-  group = NULL
+  group = NULL,
+  min_regulon = 15L
 )
 }
 \arguments{
 \item{obj}{A validated OmniSeq object with TF and DE results.}
 
-\item{n_tfs}{Integer. Number of top TFs to include. Default: \code{10}.}
+\item{n_tfs}{Integer. Number of top TFs to include (split equally between
+activated and repressed). Default: \code{10}.}
 
 \item{n_targets}{Integer. Top target genes per TF to show. Default: \code{5}.}
 
@@ -23,6 +25,8 @@ plot_omni_tf_network(
 (visNetwork). Default: \code{"static"}.}
 
 \item{group}{Character. Condition group to use for TF ranking.}
+
+\item{min_regulon}{Integer. Minimum regulon size filter. Default: \code{15}.}
 }
 \value{
 A plot object (returned invisibly).

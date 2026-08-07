@@ -8,7 +8,7 @@ plot_omni_leading_edge(
   obj,
   n_pathways = 5,
   isolate_contrast = TRUE,
-  cluster_rows = TRUE,
+  cluster_rows = FALSE,
   cluster_cols = TRUE,
   show_rownames = NULL,
   color_up = "#B2182B",
@@ -23,7 +23,7 @@ plot_omni_leading_edge(
 
 \item{isolate_contrast}{Logical. Subset samples to contrast groups.}
 
-\item{cluster_rows}{Logical. Cluster genes. Default: \code{TRUE}.}
+\item{cluster_rows}{Logical. Cluster genes. Default: \code{FALSE}.}
 
 \item{cluster_cols}{Logical. Cluster samples. Default: \code{TRUE}.}
 

@@ -18,7 +18,10 @@ Default: \code{"hg38"}.}
 The OmniSeq object with \verb{$te_great} populated.
 }
 \description{
-Submits significant TE genomic coordinates to GREAT via the \code{rGREAT}
-package to identify biological functions of nearby host genes.
+Runs GREAT proximity enrichment locally via the \code{rGREAT::great()} function
+(rGREAT >= 1.99.0). This avoids the deprecated web-server API which no
+longer supports named ontology categories in v4.
+}
+\details{
 Requires \code{run_omni_te_proximity()} to be run first.
 }

@@ -12,7 +12,8 @@ run_omni_sensor_score(
   cgas_families = NULL,
   rigi_families = NULL,
   tlr7_families = NULL,
-  min_loci = 5L
+  min_loci = 5L,
+  sc_deconv = NULL
 )
 }
 \arguments{
@@ -37,6 +38,11 @@ score. Defaults to built-in curated list.}
 
 \item{min_loci}{Integer. Minimum number of loci required for a sensor
 score to be computed. Default: \code{5}.}
+
+\item{sc_deconv}{Optional matrix/data.frame of samples x cell states from
+MuSiC deconvolution (e.g. using SAVI as reference). When provided and an
+IFN/monocyte-like column is present, an IFN monocyte burden score is
+computed alongside the TE sensor scores. Default: \code{NULL}.}
 }
 \value{
 The gene_obj with sensor scores stored in \verb{$sensor_scores}.

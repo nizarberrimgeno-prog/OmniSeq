@@ -53,7 +53,9 @@
 #'   grouping/outcome variable (e.g. `"Condition"`, `"Phenotype"`,
 #'   `"Genotype"`).
 #' @param exclude_groups Optional character vector. Values in `group_col` to
-#'   drop before fitting. Default: `NULL` (use all groups).
+#'   drop before fitting. E.g. `c("SPEN", "Control")` to run SLE vs CBL only.
+#'   Default: `NULL` (use all groups). A warning is issued for any retained
+#'   group with fewer than 3 samples.
 #' @param ncomp Integer. Number of components to fit. If `NULL` (default),
 #'   automatically tuned via LOO cross-validation (max tested: 3).
 #' @param keepX Integer vector of length `ncomp`. Number of features to
@@ -66,8 +68,27 @@
 #' @param seed Integer. Random seed for reproducibility. Default: `42`.
 #'
 #' @return The OmniSeq object with results stored in
-#'   `obj$splsda[["<group_col>_<groups>"]]`.
+#'   `obj$splsda[["<group_col>_<groups>"]]`. Access with
+#'   `omni_splsda(obj, key)`.
 #' @export
+#'
+#' @examples
+#' \dontrun{
+#' # All patients vs controls
+#' obj <- run_omni_splsda(obj, group_col = "Condition")
+#'
+#' # SLE vs CBL only (drop Controls and SPEN)
+#' obj <- run_omni_splsda(obj, group_col = "Phenotype",
+#'                        exclude_groups = c("Control", "SPEN"))
+#'
+#' # TLR7 vs UNC93B1 (drop Controls and SPEN)
+#' obj <- run_omni_splsda(obj, group_col = "Genotype",
+#'                        exclude_groups = c("Ctrl", "SPEN"))
+#'
+#' # Three-class: SLE vs CBL vs Control (no SPEN)
+#' obj <- run_omni_splsda(obj, group_col = "Phenotype",
+#'                        exclude_groups = "SPEN")
+#' }
 run_omni_splsda <- function(obj,
                             group_col      = "Condition",
                             exclude_groups = NULL,
@@ -329,7 +350,8 @@ run_omni_splsda <- function(obj,
 #' Access a Stored sPLS-DA Result
 #'
 #' @param obj A validated OmniSeq object.
-#' @param key Character. Cache key, or `NULL` to list all available keys.
+#' @param key Character. Cache key returned by `run_omni_splsda()`, or
+#'   `NULL` to list all available keys.
 #'
 #' @return The stored sPLS-DA result list, or a character vector of keys.
 #' @export
@@ -364,15 +386,25 @@ omni_splsda <- function(obj, key = NULL) {
 
 #' Plot sPLS-DA Sample Score Plot
 #'
+#' Supervised equivalent of PCA: samples projected onto the latent components
+#' that maximally discriminate the groups. Ellipses show 95% confidence
+#' regions per group when n >= 3 per group.
+#'
 #' @param obj A validated OmniSeq object with sPLS-DA results.
-#' @param key Character. Cache key. Auto-selected if only one model exists.
-#' @param comp Integer vector of length 2. Components to plot. Default: `c(1, 2)`.
+#' @param key Character. Cache key. If `NULL` and only one model exists,
+#'   auto-selected.
+#' @param comp Integer vector of length 2. Components to plot. Default:
+#'   `c(1, 2)`.
 #' @param ellipse Logical. Draw 95% confidence ellipses. Default: `TRUE`.
 #' @param label Logical. Label sample points. Default: `TRUE`.
 #' @param shape_col Optional metadata column to map to point shape.
 #' @param title Optional custom title.
 #'
 #' @return A ggplot object (returned invisibly).
+#'
+#' @details
+#' When the model has only 1 component (common with small cohorts under LOO
+#' cross-validation), samples are plotted on Component 1 vs sample index.
 #' @export
 plot_omni_splsda_scores <- function(obj,
                                     key       = NULL,
@@ -524,6 +556,9 @@ plot_omni_splsda_scores <- function(obj,
 
 #' Plot sPLS-DA Feature Loadings
 #'
+#' Ranked horizontal barplot of features with the highest loading coefficients
+#' on a given component, colored by direction (positive/negative).
+#'
 #' @param obj A validated OmniSeq object with sPLS-DA results.
 #' @param key Character. Cache key.
 #' @param comp Integer. Which component to plot. Default: `1`.
@@ -603,6 +638,10 @@ plot_omni_splsda_loadings <- function(obj,
 # =============================================================================
 
 #' Plot VIP Scores (Variable Importance in Projection)
+#'
+#' VIP scores summarise each feature's contribution across all components.
+#' Features with VIP > 1 are considered important — this is your de novo
+#' biomarker signature list.
 #'
 #' @param obj A validated OmniSeq object with sPLS-DA results.
 #' @param key Character. Cache key.
@@ -853,6 +892,10 @@ plot_omni_splsda_roc <- function(obj, key = NULL, comp = 1L) {
 
 #' Extract the sPLS-DA De Novo Gene/TE Signature
 #'
+#' Returns a ranked data frame of features selected by the sPLS-DA model,
+#' annotated with loading coefficients, VIP scores, and DE statistics
+#' (log2FC and padj) if available from the active contrast.
+#'
 #' @param obj A validated OmniSeq object with sPLS-DA results.
 #' @param key Character. Cache key.
 #' @param comp Integer. Which component. Default: `1`.
@@ -924,8 +967,9 @@ omni_splsda_signature <- function(obj,
 #' before integration to reduce dimensionality and improve stability.
 #'
 #' @param gene_obj OmniSeq object containing standard gene VST.
-#' @param te_obj OmniSeq object containing TE VST.
-#' @param group_col Character. Metadata column for grouping. Default: `"Condition"`.
+#' @param te_obj OmniSeq object containing TE VST (SINE, LINE, ERV, etc.).
+#' @param group_col Character. Metadata column for grouping.
+#'   Default: `"Condition"`.
 #' @param exclude_groups Character vector. Groups to exclude before fitting.
 #' @param ncomp Integer. Number of components. Default: `2`.
 #' @param keepX Named list with elements `"genes"` and `"TEs"`, each a vector
@@ -933,12 +977,26 @@ omni_splsda_signature <- function(obj,
 #'   features per block — so passing `c(20, 20)` for a TE block with only
 #'   6 families is safe. Default: `list(genes = c(20, 20), TEs = c(10, 10))`.
 #' @param near_zero_var Logical. Filter near-zero-variance features before
-#'   fitting. Default: `TRUE`.
+#'   fitting. Strongly recommended — prevents crash on constant features.
+#'   Default: `TRUE`.
 #' @param seed Integer. Random seed. Default: `42`.
 #'
 #' @return The gene_obj with DIABLO result stored in
 #'   `gene_obj$diablo[["<group_col>_<groups>"]]`.
 #' @export
+#'
+#' @examples
+#' \dontrun{
+#' gene_obj <- run_omni_diablo(gene_obj, te_obj = sine_obj,
+#'                              group_col = "Condition")
+#'
+#' # Access and plot with mixOmics directly
+#' model <- gene_obj$diablo[["Condition_Control-Patient"]]$model
+#' mixOmics::plotDiablo(model, ncomp = 1)
+#' mixOmics::circosPlot(model, cutoff = 0.7)
+#' mixOmics::plotLoadings(model, comp = 1, contrib = "max")
+#' mixOmics::plotIndiv(model, legend = TRUE)
+#' }
 run_omni_diablo <- function(gene_obj,
                             te_obj,
                             group_col      = "Condition",

@@ -44,17 +44,24 @@
 
 #' Export OmniSeq Results to Disk
 #'
+#' Saves all results from a completed OmniSeq analysis to a structured
+#' directory. Creates subdirectories for tables (CSV) and plots (PNG).
+#' Skips any section that has not been run without erroring.
+#'
 #' @param obj A validated OmniSeq object.
-#' @param outdir Character. Output directory. Default: `"./omniseq_output"`.
-#' @param prefix Character. Optional file prefix. Default: `NULL`.
+#' @param outdir Character. Path to output directory. Created if it
+#'   does not exist. Default: `"./omniseq_output"`.
+#' @param prefix Character. Optional prefix for all output files.
+#'   Default: `NULL` (no prefix).
 #' @param gene_obj Optional gene OmniSeq object for TE-gene correlation plots.
-#' @param width Numeric. Plot width (inches). Default: `10`.
-#' @param height Numeric. Plot height (inches). Default: `8`.
-#' @param dpi Integer. Resolution. Default: `300`.
-#' @param save_rds Logical. Save RDS. Default: `TRUE`.
+#' @param width Numeric. Plot width in inches. Default: `10`.
+#' @param height Numeric. Plot height in inches. Default: `8`.
+#' @param dpi Integer. Plot resolution. Default: `300`.
+#' @param save_rds Logical. Save the full OmniSeq object as RDS.
+#'   Default: `TRUE`.
 #' @param overwrite Logical. Overwrite existing files. Default: `TRUE`.
 #'
-#' @return Invisibly returns a named list of saved file paths.
+#' @return Invisibly returns a named list of paths to all saved files.
 #' @export
 export_omniseq <- function(obj,
                            outdir    = "./omniseq_output",
@@ -694,13 +701,19 @@ export_omniseq <- function(obj,
 
 #' Generate an HTML Report from an OmniSeq Object
 #'
+#' Renders a self-contained HTML report summarising all completed analyses.
+#' Requires the `rmarkdown` and `knitr` packages.
+#'
 #' @param obj A validated OmniSeq object.
-#' @param outdir Character. Output directory. Default: `"./omniseq_output"`.
-#' @param report_file Character. Output filename.
+#' @param outdir Character. Output directory for the report.
+#'   Default: `"./omniseq_output"`.
+#' @param report_file Character. Output filename. Default:
+#'   `"omniseq_report.html"`.
 #' @param title Character. Report title.
-#' @param author Character. Author name.
+#' @param author Character. Author name for the report header.
 #' @param gene_obj Optional gene OmniSeq object for TE-gene correlation.
-#' @param open Logical. Open in browser after rendering. Default: `TRUE`.
+#' @param open Logical. Open the report in the browser after rendering.
+#'   Default: `TRUE`.
 #'
 #' @return Invisibly returns the path to the HTML file.
 #' @export

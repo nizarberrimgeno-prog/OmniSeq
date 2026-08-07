@@ -13,6 +13,7 @@ run_omni_mediation(
   exclude_groups = c("SPEN", "Ctrl", "Control"),
   outcome = "IRG_S_Score",
   covariates = NULL,
+  cell_state_scores = NULL,
   boot = TRUE,
   boot_sims = 1000L,
   seed = 42L
@@ -46,6 +47,11 @@ Default: \code{"IRG_S_Score"}.}
 
 \item{covariates}{Character vector. Additional covariates to include in
 both mediator and outcome models. Default: \code{NULL}.}
+
+\item{cell_state_scores}{Optional data.frame with a \code{Sample} column plus
+additional score columns (e.g. scRNA-derived cell state burden from
+MuSiC/SAVI deconvolution) to merge in as candidate mediators/outcomes.
+Default: \code{NULL}.}
 
 \item{boot}{Logical. Use bootstrap for confidence intervals. Default:
 \code{TRUE}.}

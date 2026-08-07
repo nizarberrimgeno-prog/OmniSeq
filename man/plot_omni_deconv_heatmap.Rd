@@ -10,7 +10,8 @@ plot_omni_deconv_heatmap(
   cluster_cols = FALSE,
   color_high = "#B2182B",
   color_low = "white",
-  title = NULL
+  title = NULL,
+  aggregate_main = TRUE
 )
 }
 \arguments{
@@ -25,6 +26,9 @@ plot_omni_deconv_heatmap(
 \item{color_low}{Color for low fraction. Default: \code{"white"}.}
 
 \item{title}{Optional custom title.}
+
+\item{aggregate_main}{Logical. Aggregate subtypes to 13 main cell type
+categories. Recommended for xCell (39 subtypes). Default: \code{TRUE}.}
 }
 \value{
 A pheatmap object (returned invisibly).

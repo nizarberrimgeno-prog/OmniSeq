@@ -48,6 +48,11 @@
 #'   J Clin Immunol. PMID: 26250437.
 #'   NIH Interferonopathy IRG-S panel (28 genes).
 #'
+#' @details
+#' \strong{Recommended use}: Post-DE masking via \code{run_omni_mask()} to explore
+#' biology beyond the interferon response, as recommended by DESeq2 best
+#' practices (run full model, then exclude from downstream lists).
+#'
 #' @export
 omniseq_isgs_28 <- c(
   "IFI27", "IFI44", "IFI44L", "IFIT1", "IFIT2", "IFIT3",
@@ -116,8 +121,14 @@ omniseq_isgs_extended <- unique(c(
 #'
 #' Cytoplasmic ribosomal protein genes (RPL and RPS families) plus
 #' mitochondrial ribosomal protein genes (MRPL and MRPS families).
+#' These genes are highly expressed in most cell types, can dominate
+#' variance-based analyses, and often confound pathway enrichment results.
 #'
 #' @source Ensembl gene annotation, GO:0005840 (ribosome) component genes.
+#'
+#' @details
+#' \strong{Recommended use}: Masking before heatmap clustering or GSEA when
+#' ribosomal terms are dominating enrichment results.
 #'
 #' @export
 omniseq_ribosomal <- c(
@@ -161,6 +172,11 @@ omniseq_ribosomal <- c(
 #' OmniSeq Mitochondrially-Encoded Gene Signature
 #'
 #' The 37 genes encoded by the human mitochondrial genome (MT- prefix).
+#' These include 13 protein-coding genes, 22 tRNA genes, and 2 rRNA genes.
+#' High MT gene expression relative to nuclear genes can indicate cell stress,
+#' apoptosis, or poor sample quality. Often excluded from DE analyses in
+#' single-cell RNA-seq and useful to mask in bulk RNA-seq when mitochondrial
+#' transcription dominates.
 #'
 #' @source Human mitochondrial genome annotation (NC_012920.1).
 #'
@@ -187,9 +203,18 @@ omniseq_mitochondrial <- c(
 #' OmniSeq Immunoglobulin Variable Region Gene Signature
 #'
 #' Heavy chain (IGHV), kappa light chain (IGKV), and lambda light chain
-#' (IGLV) variable region genes.
+#' (IGLV) variable region genes. These are highly expressed in B cells and
+#' plasma cells and dominate DE results in samples with varying B cell
+#' content. Masking them reveals T cell, myeloid, and stromal biology that
+#' would otherwise be hidden.
 #'
 #' @source IMGT/GENE-DB immunoglobulin gene nomenclature.
+#'   Only functional (F) and open reading frame (ORF) genes included.
+#'
+#' @details
+#' \strong{Recommended use}: Bulk RNA-seq from PBMCs, whole blood, or any tissue
+#' with variable B cell infiltration. Particularly relevant in autoimmune
+#' and inflammatory disease cohorts.
 #'
 #' @export
 omniseq_immunoglobulin <- c(
@@ -311,6 +336,9 @@ omniseq_isgs_schoggins <- unique(c(
 
 #' List Available Built-in Gene Signatures
 #'
+#' Prints a table of all built-in OmniSeq gene signatures with their
+#' shorthand names, gene counts, and descriptions.
+#'
 #' @return A data.frame of signature metadata (invisibly).
 #' @export
 omni_list_signatures <- function() {
@@ -350,6 +378,8 @@ omni_list_signatures <- function() {
 
 
 #' Look Up a Built-in Signature by Shorthand Name
+#'
+#' Internal helper used by \code{run_omni_mask()}.
 #' @keywords internal
 .omni_get_signature <- function(name) {
   # NEW FIX: Explicitly handle NULL to avoid lookup errors when

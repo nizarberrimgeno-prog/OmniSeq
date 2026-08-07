@@ -2,21 +2,34 @@
 % Please edit documentation in R/09_spLSDA.R
 \name{plot_omni_splsda_roc}
 \alias{plot_omni_splsda_roc}
-\title{Plot LOO Cross-Validated ROC Curves}
+\title{Plot Cross-Validated Balanced Error Rate}
 \usage{
 plot_omni_splsda_roc(obj, key = NULL, comp = 1L)
 }
 \arguments{
 \item{obj}{A validated OmniSeq object with sPLS-DA results.}
 
-\item{key}{Character. Cache key.}
+\item{key}{Character. Cache key for the model to plot.}
 
-\item{comp}{Integer. Which component. Default: \code{1}.}
+\item{comp}{Integer. Maximum component to display. Default: \code{1}.}
 }
 \value{
-Called for its side effect. Returns invisibly.
+A ggplot object (returned invisibly).
 }
 \description{
-Displays ROC curves from leave-one-out cross-validation.
-Only available for two-class comparisons.
+Replaces the misleading training-set ROC/AUC plot with an honest display
+of the cross-validated Balanced Error Rate (BER) per component.
+}
+\details{
+The 100\% AUC from \code{mixOmics::auroc()} reflects training-set performance —
+with small cohorts and many features, perfect training separation is trivial
+and uninformative. BER from repeated CV is the honest performance metric.
+
+Interpretation guide shown on the plot:
+BER < 0.20  — strong discrimination
+BER 0.20–0.35 — moderate signal
+BER 0.35–0.45 — weak signal
+BER >= 0.50 — no better than chance (random classifier)
+
+95\% CI is shown when nrepeat > 1 in the stored performance object.
 }

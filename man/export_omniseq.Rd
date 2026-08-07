@@ -8,6 +8,7 @@ export_omniseq(
   obj,
   outdir = "./omniseq_output",
   prefix = NULL,
+  gene_obj = NULL,
   width = 10,
   height = 8,
   dpi = 300,
@@ -23,6 +24,8 @@ does not exist. Default: \code{"./omniseq_output"}.}
 
 \item{prefix}{Character. Optional prefix for all output files.
 Default: \code{NULL} (no prefix).}
+
+\item{gene_obj}{Optional gene OmniSeq object for TE-gene correlation plots.}
 
 \item{width}{Numeric. Plot width in inches. Default: \code{10}.}
 

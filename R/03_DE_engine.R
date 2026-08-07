@@ -35,14 +35,34 @@
 #'
 #' @param obj A validated OmniSeq object produced by [init_omniseq()].
 #' @param shrinkage Character. LFC shrinkage method. One of `"apeglm"`
-#'   (recommended, default), `"ashr"`, or `"none"`.
+#'   (recommended, default), `"ashr"`, or `"none"`. `"apeglm"` requires the
+#'   `apeglm` package; if unavailable it falls back to `"ashr"` automatically.
 #' @param coef Integer or character. Which DESeq2 result coefficient to extract.
-#'   If `NULL` (default), the last coefficient in the model is used.
+#'   If `NULL` (default), the last coefficient in the model (the main condition
+#'   effect) is used automatically. In interactive mode, the user is prompted.
 #' @param interactive Logical. If `TRUE` and the session is interactive,
-#'   prompts the user to select a coefficient. Default: `FALSE`.
+#'   prompts the user to select a coefficient from the fitted model.
+#'   Default: `FALSE`.
 #'
-#' @return The OmniSeq object with results cached.
+#' @return The OmniSeq object with the following updated:
+#'   - `$model_info$dds` — the fitted DESeqDataSet
+#'   - `$model_info$vst` — cached VST (blind = FALSE)
+#'   - `$model_info$extracted_coef` — name of the active coefficient
+#'   - `$model_info$lfc_shrinkage` — shrinkage method used
+#'   - `$results_cache[["<coef_name>"]]` — a list with `$results` and `$fold_changes`
+#'   - `$active_contrast` — set to the extracted coefficient name
 #' @export
+#'
+#' @examples
+#' \dontrun{
+#' obj <- run_omni_de(obj)
+#' obj <- run_omni_de(obj, shrinkage = "ashr")
+#' obj <- run_omni_de(obj, interactive = TRUE)  # prompts for coefficient
+#'
+#' # Retrieve results
+#' res <- omni_results(obj)
+#' head(as.data.frame(res))
+#' }
 run_omni_de <- function(obj,
                         shrinkage   = c("apeglm", "ashr", "none"),
                         coef        = NULL,
@@ -251,14 +271,24 @@ run_omni_de <- function(obj,
 #'   compare. Defaults to the primary condition set at init.
 #' @param group1 Character. The numerator group (e.g. `"Treated"`).
 #' @param group2 Character. The denominator / baseline group (e.g. `"Control"`).
-#' @param shrinkage Character. LFC shrinkage method: `"ashr"` (default),
-#'   `"apeglm"`, or `"none"`.
-#' @param new_covariates Optional character vector. Covariates for the rebuilt
-#'   model. Defaults to the covariates already stored in the object.
+#' @param shrinkage Character. LFC shrinkage method: `"apeglm"`, `"ashr"`,
+#'   or `"none"`. Defaults to `"ashr"` (always works for contrast-based
+#'   extraction; apeglm requires a named coefficient).
+#' @param new_covariates Optional character vector. If the model needs to be
+#'   rebuilt (column differs from current condition), use these covariates.
+#'   Defaults to the covariates already stored in the object.
 #'
 #' @return The OmniSeq object with a new entry in `$results_cache` and
 #'   `$active_contrast` updated.
 #' @export
+#'
+#' @examples
+#' \dontrun{
+#' obj <- run_omni_contrast(obj, group1 = "Treated", group2 = "Control")
+#' obj <- run_omni_contrast(obj, column = "Genotype",
+#'                          group1 = "KO", group2 = "WT",
+#'                          shrinkage = "ashr")
+#' }
 run_omni_contrast <- function(obj,
                               column         = NULL,
                               group1         = NULL,
@@ -458,16 +488,50 @@ run_omni_contrast <- function(obj,
 #' Removes a list of features (genes, TEs) from the active contrast's results
 #' and fold-change vector to reveal secondary biology in downstream plots.
 #' The original results are preserved in `results_cache` under the original
-#' key; the masked version is stored under a new key.
+#' key; the masked version is stored under a new key and becomes the new
+#' `active_contrast`.
 #'
 #' @param obj A validated OmniSeq object with DE results.
 #' @param features Optional character vector of gene/feature names to mask.
 #' @param signature Optional character string. Shorthand name of a built-in
-#'   OmniSeq signature to mask. Run `omni_list_signatures()` for options.
-#' @param mask_label A short label describing what was masked.
+#'   OmniSeq signature to mask. Options: `"isgs_28"`, `"isgs_extended"`,
+#'   `"ribosomal"`, `"mitochondrial"`, `"immunoglobulin"`. Run
+#'   `omni_list_signatures()` for details.
+#' @param mask_label A short label describing what was masked. Used to name
+#'   the new cache entry. Auto-set from `signature` if not provided.
 #'
-#' @return The OmniSeq object with a new masked contrast.
+#' @return The OmniSeq object with a new masked contrast in `results_cache`
+#'   and `active_contrast` updated to the masked key.
+#'
+#' @details
+#' Features can be provided in three ways:
+#' 1. A character vector of gene names via `features`
+#' 2. A built-in signature shorthand via `signature` (e.g. `"isgs_28"`)
+#' 3. Both combined — `signature` genes are merged with `features`
+#'
+#' Run `omni_list_signatures()` to see all available built-in signatures.
+#'
 #' @export
+#'
+#' @examples
+#' \dontrun{
+#' # Option 1: use a built-in signature by shorthand
+#' obj <- run_omni_mask(obj, signature = "isgs_28")
+#'
+#' # Option 2: use the built-in vector directly
+#' obj <- run_omni_mask(obj, features = omniseq_isgs_28, mask_label = "ISGs")
+#'
+#' # Option 3: combine built-in + custom genes
+#' obj <- run_omni_mask(obj,
+#'                      features  = c("EXTRA_GENE1", "EXTRA_GENE2"),
+#'                      signature = "isgs_28",
+#'                      mask_label = "ISGs_Extended")
+#'
+#' # The original contrast is still accessible
+#' omni_contrasts(obj)
+#' omni_results(obj, contrast = "Condition_Patient_vs_Control")
+#' omni_results(obj, contrast = "Condition_Patient_vs_Control (excl. ISGs_28)")
+#' }
 run_omni_mask <- function(obj,
                           features   = NULL,
                           signature  = NULL,

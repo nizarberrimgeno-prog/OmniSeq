@@ -47,7 +47,7 @@ filtering step (done per analysis).
 \dontrun{
 # Build coordinate table once
 te_coords <- omni_build_te_coords(
-  hervd_dir = "/path/to/HERVd/gtf"
+  gtf_files = c("/path/to/sine.gtf", "/path/to/line.gtf")
 )
 
 # Then use for each analysis

@@ -10,6 +10,7 @@ export_omniseq_report(
   report_file = "omniseq_report.html",
   title = "OmniSeq Analysis Report",
   author = "",
+  gene_obj = NULL,
   open = TRUE
 )
 }
@@ -25,6 +26,8 @@ Default: \code{"./omniseq_output"}.}
 \item{title}{Character. Report title.}
 
 \item{author}{Character. Author name for the report header.}
+
+\item{gene_obj}{Optional gene OmniSeq object for TE-gene correlation.}
 
 \item{open}{Logical. Open the report in the browser after rendering.
 Default: \code{TRUE}.}

@@ -33,6 +33,11 @@
 
 #' Run the Full OmniSeq Pipeline Automatically
 #'
+#' Runs the complete OmniSeq analysis pipeline from raw counts to exported
+#' results using sensible defaults. All steps are protected with
+#' `tryCatch` — a failure in one step is reported but does not abort
+#' subsequent steps.
+#'
 #' @param count_matrix Matrix or data frame of raw counts (features x samples).
 #' @param metadata Data frame with sample metadata (rows = samples).
 #' @param condition_col Character. Metadata column for main condition.
@@ -261,6 +266,10 @@ run_omniseq_auto <- function(count_matrix,
 # =============================================================================
 
 #' Run the OmniSeq Pipeline Interactively
+#'
+#' Guides the user through the complete OmniSeq pipeline step by step,
+#' prompting for parameter choices at each stage. Designed for exploratory
+#' use in an interactive R session.
 #'
 #' @param count_matrix Matrix or data frame of raw counts.
 #' @param metadata Data frame with sample metadata.
@@ -1027,17 +1036,44 @@ run_omniseq_guided <- function(count_matrix,
 
 #' Run Focused Masked Analysis After the Full Pipeline
 #'
+#' After running run_omniseq_guided() or run_omniseq_auto() on the full
+#' gene set, this function applies a gene signature mask and reruns only
+#' the steps that are biologically meaningful to compare:
+#' - DE results (volcano, heatmap, top genes)
+#' - GO ORA enrichment
+#' - GSEA
+#' - sPLS-DA
+#' - WGCNA
+#'
 #' @param obj A completed OmniSeq object (after run_omniseq_guided).
-#' @param signature Character. Built-in signature to mask.
-#' @param features Character vector. Additional genes to mask.
+#' @param signature Character. Built-in signature to mask. Options:
+#'   "isgs_28", "isgs_extended", "ribosomal", "mitochondrial",
+#'   "immunoglobulin". Default: "isgs_28".
+#' @param features Character vector. Additional genes to mask beyond the
+#'   signature. Default: NULL.
 #' @param mask_label Character. Label for the masked contrast.
+#'   Default: auto-generated.
 #' @param lfc_thresh Numeric. LFC threshold for ORA. Default: 0.
-#' @param gsea_categories Character vector. MSigDB categories.
-#' @param n_wgcna Integer. Top variable genes for masked WGCNA.
-#' @param org_db Character. Annotation database.
+#' @param gsea_categories Character vector. MSigDB categories for GSEA.
+#'   Default: c("H") (Hallmark).
+#' @param n_wgcna Integer. Number of top variable genes for masked WGCNA.
+#'   Default: 3000.
+#' @param org_db Character. Annotation database. Default: "org.Hs.eg.db".
 #' @param outdir Character. Directory for masked results export.
+#'   Default: NULL (uses same directory as original export).
 #'
 #' @return The OmniSeq object updated with masked results.
+#'
+#' @details
+#' Steps NOT rerun (masking does not change them):
+#' - QC (cell-level metrics unchanged)
+#' - Deconvolution (cell type fractions unchanged)
+#' - STRING network (topology unchanged)
+#' - TF activity (regulon-based scores unchanged)
+#' - ssGSEA (per-sample pathway scores use all genes)
+#'
+#' Results are stored inside the original object under masked contrast keys
+#' and are automatically included in the HTML report.
 #' @export
 run_omniseq_masked <- function(obj,
                                signature       = "isgs_28",

@@ -6,6 +6,8 @@
 \usage{
 run_omni_tf(
   obj,
+  mode = c("contrast", "samples"),
+  sample_group = NULL,
   database = c("collectri", "dorothea", "both"),
   method = c("ulm", "mlm", "wsum"),
   species = NULL,
@@ -16,32 +18,47 @@ run_omni_tf(
 \arguments{
 \item{obj}{A validated OmniSeq object with a fitted model.}
 
-\item{database}{Character. TF regulon database: \code{"collectri"},
-\code{"dorothea"}, or \code{"both"} (runs both and merges). Default: \code{"collectri"}.}
+\item{mode}{Character. \code{"contrast"} (t-stat based, default) or \code{"samples"}
+(VST-based, restricted to \code{sample_group}).}
 
-\item{method}{Character. decoupleR statistical method: \code{"ulm"} (fast,
-recommended), \code{"mlm"} (multivariate), or \code{"wsum"} (weighted sum).
+\item{sample_group}{Character. For \code{mode = "samples"}: which condition group
+to restrict to (e.g. \code{"Patient"}). Defaults to the non-reference group.}
+
+\item{database}{Character. TF regulon database: \code{"collectri"},
+\code{"dorothea"}, or \code{"both"}. Default: \code{"collectri"}.}
+
+\item{method}{Character. decoupleR method: \code{"ulm"}, \code{"mlm"}, or \code{"wsum"}.
 Default: \code{"ulm"}.}
 
 \item{species}{Character. Inherited from \code{obj$params$species} if \code{NULL}.}
 
-\item{dorothea_levels}{Character vector. Confidence levels to include for
-DoRothEA. Default: \code{c("A", "B", "C")}.}
+\item{dorothea_levels}{Character vector. DoRothEA confidence levels.
+Default: \code{c("A", "B", "C")}.}
 
 \item{interactive}{Logical. Prompt user to choose database and method.}
 }
 \value{
-The OmniSeq object with \verb{$tf_results} and cached regulons populated.
+The OmniSeq object with TF results cached.
 }
 \description{
-Uses \code{decoupleR} to infer TF activity from the VST expression matrix using
-either DoRothEA (classic, confidence-filtered) or CollecTRI (newer, more
-complete). Both databases are available and can be selected at runtime.
+Uses \code{decoupleR} to infer TF activity using one of two modes:
 }
 \details{
-Regulons are cached in \code{obj$params$tf_regulons} after the first run so
-downstream plot functions do not re-download them.
+\itemize{
+\item \code{"contrast"} (default, recommended): Uses Wald t-statistics from the
+active contrast as input to ULM. Produces one score per TF per contrast —
+genuinely different across contrasts. Requires \code{stat} column in
+\code{results_cache} (populated by \code{run_omni_de()} / \code{run_omni_contrast()}).
+\item \code{"samples"}: Uses the VST expression matrix restricted to a specified
+sample group (e.g. patients only). Produces per-sample scores.
+Never mixes patients and controls — the previous behaviour of mixing
+all 24 samples was incorrect and is no longer the default.
+}
 
-Results are stored in \code{obj$tf_results} as a data frame with columns:
-\code{source} (TF name), \code{score}, \code{statistic}, \code{p_value}, \code{condition}.
+Results are stored in:
+\itemize{
+\item \code{obj$tf_contrast_cache[[contrast_key]]} — one score per TF (contrast mode)
+\item \code{obj$tf_sample_activity} — per-sample scores (samples mode)
+\item \code{obj$tf_results} — legacy slot (backward compat, always updated)
+}
 }

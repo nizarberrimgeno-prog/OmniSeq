@@ -27,6 +27,10 @@
 
 #' Run Gene Ontology Over-Representation Analysis
 #'
+#' Extracts significant DEGs from the active contrast and runs GO enrichment
+#' (Biological Process by default). Results are stored in `obj$enrichment`
+#' and optionally simplified to remove redundant terms.
+#'
 #' @param obj A validated OmniSeq object with DE results.
 #' @param lfc_thresh Log2 fold change threshold. Default: `1`.
 #' @param pval_thresh Adjusted p-value threshold. Default: `0.05`.
@@ -142,6 +146,9 @@ run_omni_enrichment <- function(obj,
 
 #' Run Gene Set Enrichment Analysis
 #'
+#' Uses the full ranked fold-change vector from the active contrast to run
+#' GSEA against MSigDB gene sets.
+#'
 #' @param obj A validated OmniSeq object with DE results.
 #' @param species Character. Inherited from `obj$params$species`.
 #' @param category Character. MSigDB collection. Default: `"H"`.
@@ -232,6 +239,8 @@ run_omni_gsea <- function(obj,
 # =============================================================================
 
 #' Run Single-Sample GSEA (ssGSEA) via GSVA
+#'
+#' Computes per-sample pathway enrichment scores using the GSVA package.
 #'
 #' @param obj A validated OmniSeq object with a fitted model.
 #' @param species Character. Inherited from `obj$params$species`.
@@ -355,6 +364,9 @@ run_omni_simplify <- function(obj, cutoff = 0.7) {
 # =============================================================================
 
 #' Differential Pathway Activity Analysis
+#'
+#' Runs a limma linear model on ssGSEA scores to identify significantly
+#' differentially active pathways between two groups.
 #'
 #' @param obj A validated OmniSeq object with ssGSEA scores.
 #' @param group1 Character. Numerator group.
@@ -580,6 +592,9 @@ plot_omni_gsea <- function(obj,
 
 #' Plot ssGSEA Pathway Activity Heatmap
 #'
+#' Rows are the most variable pathways, columns are samples, fill is the
+#' ssGSEA enrichment score (row-scaled).
+#'
 #' @param obj A validated OmniSeq object with ssGSEA scores.
 #' @param show_n Integer. Number of top variable pathways. Default: `30`.
 #' @param isolate_contrast Logical. Subset samples to active contrast groups.
@@ -754,12 +769,16 @@ plot_omni_compare_clusters <- function(obj,
 
 #' Plot Leading Edge Gene Heatmap
 #'
+#' For each of the top N enriched GSEA pathways, extracts the leading edge
+#' genes and displays their VST expression as an annotated heatmap.
+#'
 #' @param obj A validated OmniSeq object with GSEA results.
 #' @param n_pathways Integer. Number of top pathways to extract. Default: `5`.
 #' @param isolate_contrast Logical. Subset samples to contrast groups.
-#' @param cluster_rows Logical. Cluster genes. Default: `TRUE`.
+#' @param cluster_rows Logical. Cluster genes. Default: `FALSE`.
 #' @param cluster_cols Logical. Cluster samples. Default: `TRUE`.
-#' @param show_rownames Logical. Show gene names. Auto-detected if `NULL`.
+#' @param show_rownames Logical. Show gene names. Auto-detected if `NULL`:
+#'   shown when <= 50 genes, hidden otherwise.
 #' @param color_up Color for high expression. Default: `"#B2182B"`.
 #' @param color_down Color for low expression. Default: `"#2166AC"`.
 #' @param title Optional custom title.
@@ -870,8 +889,12 @@ plot_omni_leading_edge <- function(obj,
 
 #' Plot Per-Gene LFC Inside a Pathway
 #'
+#' For a given pathway, plots each gene's log2 fold change as a ranked
+#' horizontal barplot colored by significance.
+#'
 #' @param obj A validated OmniSeq object with DE and GSEA results.
 #' @param pathway_name Character. Pathway name (partial match allowed).
+#'   Defaults to the top enriched pathway.
 #' @param pval_thresh Adjusted p-value threshold for coloring. Default: `0.05`.
 #'
 #' @return A ggplot object (returned invisibly).
@@ -959,6 +982,10 @@ plot_omni_pathway_lfc <- function(obj,
 # =============================================================================
 
 #' Compare Pathway Enrichment Across Multiple Contrasts
+#'
+#' Runs ORA on each contrast in `results_cache` and displays a bubble heatmap
+#' where rows are pathways, columns are contrasts, size is gene ratio and
+#' color is -log10(FDR).
 #'
 #' @param obj A validated OmniSeq object with multiple contrasts.
 #' @param contrasts Character vector of contrast names. Defaults to all.

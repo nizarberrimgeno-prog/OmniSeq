@@ -39,9 +39,14 @@ The OmniSeq object with a new entry in \verb{$results_cache} and
 Extracts a specific pairwise comparison (e.g. GroupA vs GroupB) from the
 already-fitted DESeq2 model without refitting. If the requested condition
 column differs from the one used to build the current model, the model is
-automatically rebuilt.
+automatically rebuilt with the new column as the grouping variable.
 }
 \details{
+The rebuilt model is cached in \code{model_info$cached_column_dds[[key]]} so
+that multiple contrasts using the same column (e.g. UNC93B1 vs Ctrl,
+SPEN vs Ctrl, TLR7 vs Ctrl — all using the Genotype column) reuse the
+same fitted model. This avoids redundant DESeq() calls.
+
 Results are added to \code{results_cache} under the key \code{"GroupA vs GroupB"},
 leaving all previous contrasts intact.
 }

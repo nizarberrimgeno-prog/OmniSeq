@@ -27,7 +27,7 @@ auto-selected.}
 
 \item{label}{Logical. Label sample points. Default: \code{TRUE}.}
 
-\item{shape_col}{Optional character. Metadata column to map to point shape.}
+\item{shape_col}{Optional metadata column to map to point shape.}
 
 \item{title}{Optional custom title.}
 }

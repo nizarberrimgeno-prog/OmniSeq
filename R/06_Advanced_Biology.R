@@ -374,8 +374,8 @@ run_omni_tf <- function(obj,
 #'
 #' For contrast mode: draws from `tf_contrast_cache` — genuinely different
 #' per contrast. For samples mode: draws from `tf_sample_activity`.
-#' Color scale is clamped to [-5, 5] to prevent extreme outliers from
-#' compressing all other TFs to grey.
+#' Color scale is clamped to the range -5 to 5 to prevent extreme outliers
+#' from compressing all other TFs to grey.
 #'
 #' @param obj A validated OmniSeq object with TF results.
 #' @param n Integer. Number of top TFs per direction to show. Default: `15`.
@@ -1470,6 +1470,9 @@ run_omni_deconvolution <- function(obj,
 
 #' Plot Cell Type Fraction Heatmap
 #'
+#' Displays estimated cell type fractions across all samples as an annotated
+#' heatmap. Samples are ordered by condition by default.
+#'
 #' @param obj A validated OmniSeq object with deconvolution results.
 #' @param cluster_rows Logical. Cluster cell types. Default: `TRUE`.
 #' @param cluster_cols Logical. Cluster samples. Default: `FALSE`.
@@ -1589,6 +1592,10 @@ plot_omni_deconv_heatmap <- function(obj,
 # =============================================================================
 
 #' Correlate Cell Type Fractions with a Gene or Pathway
+#'
+#' For each cell type, computes Pearson correlation against either a gene's
+#' VST expression or an ssGSEA pathway score. Displays results as a dot plot
+#' (x = R, y = cell type, size = -log10 FDR).
 #'
 #' @param obj A validated OmniSeq object with deconvolution results.
 #' @param feature Character. Gene name or pathway name to correlate against.
@@ -1714,13 +1721,20 @@ plot_omni_deconv_corr <- function(obj,
 
 #' Query STRING Database for Top DEG Interactions
 #'
+#' Takes the top N significant DEGs and queries the STRING protein-protein
+#' interaction database via `STRINGdb`. To avoid re-downloading the large
+#' STRING files on every session, set `cache_dir` to a persistent local path.
+#'
 #' @param obj A validated OmniSeq object with DE results.
 #' @param n Integer. Number of top DEGs to query. Default: `50`.
 #' @param pval_thresh Adjusted p-value threshold. Default: `0.05`.
-#' @param string_score Integer. Minimum STRING interaction score (0-1000).
+#' @param string_score Integer. Minimum STRING interaction score (0–1000).
 #'   Default: `400` (medium confidence).
 #' @param species_id Integer. NCBI taxonomy ID. Default: `9606` (human).
+#'   Use `10090` for mouse.
 #' @param cache_dir Character. Local directory for STRING cache files.
+#'   Default: `"~/.omniseq_cache/string"`. Set this to avoid re-downloading
+#'   the 70MB STRING files on every new R session.
 #'
 #' @return The OmniSeq object with `$string_network` populated.
 #' @export
@@ -1815,6 +1829,10 @@ run_omni_string <- function(obj,
 # =============================================================================
 
 #' Plot STRING Protein Interaction Network
+#'
+#' Visualises the STRING PPI network with nodes colored by log2 fold change
+#' and sized by interaction degree. Supports both static (ggraph) and
+#' interactive (visNetwork) output.
 #'
 #' @param obj A validated OmniSeq object with STRING results.
 #' @param plot_type Character. `"static"` (ggraph) or `"interactive"`

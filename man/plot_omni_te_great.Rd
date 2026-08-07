@@ -15,6 +15,7 @@ plot_omni_te_great(obj, show_n = 15)
 A ggplot object (returned invisibly).
 }
 \description{
-Dotplot of top GO Biological Process terms from GREAT proximity analysis,
-where x = -log10(FDR), size = fold enrichment.
+Dotplot of top GO Biological Process terms from GREAT proximity analysis.
+Uses column names produced by \code{rGREAT::great()} (local mode):
+\code{description}, \code{p_adjust}, \code{fold_enrichment}.
 }
