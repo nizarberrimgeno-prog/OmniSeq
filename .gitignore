@@ -1,0 +1,15 @@
+# OS / editor
+.DS_Store
+.Rhistory
+.Rproj.user/
+.claude/
+
+# OmnipathR run logs (regenerated on every run)
+omnipathr-log/
+
+# Working data files (not package example/vignette data)
+*.rds
+*.RData
+
+# Backup files
+*.bak

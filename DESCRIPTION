@@ -1,0 +1,74 @@
+Package: OmniSeq
+Title: Multi-Omics RNA-Seq Analysis with Transposable Element Integration
+Version: 0.1.0
+Authors@R: person(
+    given   = "Nizar",
+    family  = "Berrim",
+    role    = c("aut", "cre"),
+    email   = "nizarberrim.geno@gmail.com"
+  )
+Description: OmniSeq provides a unified workflow for bulk RNA-seq differential
+    expression analysis, pathway enrichment, transposable element analysis,
+    and multi-omics integration. It supports gene and TE count matrices,
+    wraps DESeq2, clusterProfiler, GSVA, WGCNA, mixOmics, decoupleR, and
+    immunedeconv into a single coherent S3 object-based interface. Key
+    features include innate immune sensor scoring from TE expression data,
+    causal mediation analysis, and export to publication-ready tables and
+    figures.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+biocViews: RNASeq, DifferentialExpression, GeneExpression, Transcriptomics,
+    Pathways, Network, MultipleComparison
+Depends:
+    R (>= 4.2.0)
+Imports:
+    SummarizedExperiment (>= 1.28.0),
+    DESeq2               (>= 1.38.0),
+    limma                (>= 3.54.0),
+    ggplot2              (>= 3.4.0),
+    ggrepel              (>= 0.9.0),
+    scales               (>= 1.2.0),
+    dplyr                (>= 1.1.0),
+    methods,
+    stats,
+    utils,
+    grDevices,
+    graphics,
+    grid
+Suggests:
+    clusterProfiler      (>= 4.6.0),
+    enrichplot           (>= 1.18.0),
+    org.Hs.eg.db,
+    org.Mm.eg.db,
+    msigdbr              (>= 7.5.0),
+    GSVA                 (>= 1.46.0),
+    pheatmap             (>= 1.0.12),
+    patchwork            (>= 1.1.0),
+    stringr              (>= 1.5.0),
+    ggpubr               (>= 0.6.0),
+    ggraph               (>= 2.1.0),
+    igraph               (>= 1.4.0),
+    visNetwork           (>= 2.1.0),
+    rGREAT               (>= 1.9.0),
+    rtracklayer          (>= 1.58.0),
+    GenomicRanges,
+    IRanges,
+    WGCNA,
+    mixOmics             (>= 6.22.0),
+    decoupleR            (>= 2.4.0),
+    immunedeconv         (>= 2.1.0),
+    xCell,
+    STRINGdb             (>= 2.4.0),
+    mediation            (>= 4.5.0),
+    ashr,
+    apeglm,
+    MuSiC,
+    rmarkdown            (>= 2.20),
+    knitr                (>= 1.42),
+    testthat             (>= 3.0.0),
+    withr
+Config/testthat/edition: 3
+URL: https://github.com/yourusername/OmniSeq
+BugReports: https://github.com/yourusername/OmniSeq/issues
