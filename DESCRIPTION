@@ -70,5 +70,5 @@ Suggests:
     testthat             (>= 3.0.0),
     withr
 Config/testthat/edition: 3
-URL: https://github.com/yourusername/OmniSeq
-BugReports: https://github.com/yourusername/OmniSeq/issues
+URL: https://github.com/nizarberrimgeno-prog/OmniSeq
+BugReports: https://github.com/nizarberrimgeno-prog/OmniSeq/issues
