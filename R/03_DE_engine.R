@@ -103,7 +103,7 @@ run_omni_de <- function(obj,
   # 3. CACHE VST IMMEDIATELY (blind = FALSE uses the fitted dispersions)
   # ------------------------------------------------------------------
   message("[run_omni_de] Caching VST normalised matrix...")
-  vsd <- DESeq2::vst(dds, blind = FALSE)
+  vsd <- .omni_vst(dds, blind = FALSE)
   obj$model_info$dds <- dds
   obj$model_info$vst <- vsd
 

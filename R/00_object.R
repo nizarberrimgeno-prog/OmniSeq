@@ -326,6 +326,25 @@ summary.OmniSeq <- function(object, ...) {
 #' @keywords internal
 `%||%` <- function(x, y) if (!is.null(x)) x else y
 
+#' Compute a VST matrix, falling back below DESeq2::vst()'s row minimum
+#'
+#' DESeq2::vst() requires at least `nsub` (default 1000) rows for its fast
+#' dispersion-subsampling path and errors below that — a common situation
+#' with filtered gene panels or TE locus counts. Falls back to
+#' DESeq2::varianceStabilizingTransformation(), which has no row minimum.
+#'
+#' @param dds A DESeqDataSet.
+#' @param blind Logical, passed through to the DESeq2 transform.
+#' @return A DESeqTransform (VST) object.
+#' @keywords internal
+.omni_vst <- function(dds, blind) {
+  if (nrow(dds) < 1000) {
+    DESeq2::varianceStabilizingTransformation(dds, blind = blind)
+  } else {
+    DESeq2::vst(dds, blind = blind)
+  }
+}
+
 #' @keywords internal
 packageVersion_safe <- function() {
   tryCatch(

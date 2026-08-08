@@ -85,7 +85,7 @@ run_omni_qc <- function(obj,
 
   } else if (!is.null(obj$model_info$dds)) {
     message("[run_omni_qc] Extracting VST from fitted DESeq2 model...")
-    vsd <- DESeq2::vst(obj$model_info$dds, blind = FALSE)
+    vsd <- .omni_vst(obj$model_info$dds, blind = FALSE)
     obj$model_info$vst <- vsd
 
   } else {
@@ -95,7 +95,7 @@ run_omni_qc <- function(obj,
       colData   = meta,
       design    = ~ 1
     )
-    vsd <- DESeq2::vst(dds_qc, blind = TRUE)
+    vsd <- .omni_vst(dds_qc, blind = TRUE)
     obj$model_info$vst <- vsd
   }
 
