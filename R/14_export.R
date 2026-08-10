@@ -222,8 +222,20 @@ export_omniseq <- function(obj,
     if (nrow(ora_df) > 0) .save_csv("ora_terms", ora_df)
   }
 
-  # GSEA
-  if (has_gsea) {
+  # GSEA — export all contrast results as separate CSVs (gsea_cache is
+  # keyed both by plain contrast name and by "<contrast>::GSEA::<category>";
+  # only the plain-name entries are exported to avoid duplicates)
+  if (!is.null(obj$gsea_cache) && length(obj$gsea_cache) > 0) {
+    plain_keys <- setdiff(names(obj$gsea_cache), grep("::GSEA::", names(obj$gsea_cache), value = TRUE))
+    for (ct_key in plain_keys) {
+      gsea_df <- tryCatch(as.data.frame(obj$gsea_cache[[ct_key]]),
+                          error = function(e) NULL)
+      if (!is.null(gsea_df) && nrow(gsea_df) > 0) {
+        safe_key <- gsub("[^a-zA-Z0-9]", "_", ct_key)
+        .save_csv(paste0("gsea_results_", safe_key), gsea_df)
+      }
+    }
+  } else if (has_gsea) {
     gsea_df <- as.data.frame(obj$advanced_gsea)
     if (nrow(gsea_df) > 0) .save_csv("gsea_results", gsea_df)
   }
@@ -998,6 +1010,15 @@ export_omniseq_report <- function(obj,
                  '    plot_omni_ora(obj, plot_type = "emap")',
                  '  } else { cat("No enriched GO terms for this contrast.") }',
                  '}, error = function(e) cat("ORA not available:", e$message))',
+                 '```',
+                 "",
+                 paste0('```{r ct-gsea-', safe, '}'),
+                 'tryCatch({',
+                 '  .gsea <- .omni_get_gsea(obj)',
+                 '  if (!is.null(.gsea) && nrow(as.data.frame(.gsea)) > 0) {',
+                 '    plot_omni_gsea(obj, show_n = 10)',
+                 '  } else { cat("No enriched GSEA terms for this contrast.") }',
+                 '}, error = function(e) cat("GSEA not available:", e$message))',
                  '```'
       )
     } else {

@@ -529,22 +529,43 @@ run_omniseq_guided <- function(count_matrix,
     if (!nzchar(trimws(gsea_input))) gsea_input <- "H"
     gsea_cats <- toupper(trimws(strsplit(gsea_input, ",")[[1]]))
 
+    # GSEA is run per-contrast (like ORA and TF) rather than only on the
+    # main contrast. GSEA uses the full ranked gene list rather than a
+    # hard significance cutoff, so it often finds real pathway-level
+    # signal in underpowered contrasts where ORA finds nothing.
+    gsea_cts <- omni_contrasts(obj)
+    gsea_cts <- gsea_cts[!grepl("excl\\.", gsea_cts)]
+    gsea_cts <- unique(c(main_ct, gsea_cts))
+
     for (cat_i in gsea_cats) {
-      obj <- tryCatch({
-        o <- run_omni_gsea(obj, category = cat_i)
-        n_g <- nrow(as.data.frame(o$advanced_gsea))
-        message("[GSEA] Category ", cat_i, ": ", n_g, " terms found.")
-        if (n_g > 0) {
-          plot_omni_gsea(o, show_n = 10)
-          if (n_g >= 3)
-            plot_omni_leading_edge(o, n_pathways = min(5, n_g))
-        }
-        status[[paste0("GSEA_", cat_i)]] <- "PASS"
-        o
-      }, error = function(e) {
-        status[[paste0("GSEA_", cat_i)]] <<- paste("FAIL:", e$message)
-        obj
-      })
+      main_gsea_cat <- NULL
+
+      for (ct in gsea_cts) {
+        obj$active_contrast <- ct
+        obj <- tryCatch({
+          o <- run_omni_gsea(obj, category = cat_i)
+          n_g <- nrow(as.data.frame(o$advanced_gsea))
+          message("[GSEA] Contrast '", ct, "', category ", cat_i, ": ",
+                  n_g, " terms found.")
+          if (ct == main_ct && n_g > 0) {
+            plot_omni_gsea(o, show_n = 10)
+            if (n_g >= 3)
+              plot_omni_leading_edge(o, n_pathways = min(5, n_g))
+          }
+          status[[paste0("GSEA_", cat_i, "_", ct)]] <- "PASS"
+          o
+        }, error = function(e) {
+          status[[paste0("GSEA_", cat_i, "_", ct)]] <<- paste("FAIL:", e$message)
+          obj
+        })
+        if (ct == main_ct) main_gsea_cat <- obj$advanced_gsea
+      }
+
+      # Restore main contrast's result in the legacy single slot so
+      # export/report continue to reflect the main contrast by default —
+      # every contrast's result is still available via obj$gsea_cache.
+      obj$advanced_gsea   <- main_gsea_cat
+      obj$active_contrast <- main_ct
     }
   }
 
