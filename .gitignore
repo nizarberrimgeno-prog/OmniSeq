@@ -11,5 +11,8 @@ omnipathr-log/
 *.rds
 *.RData
 
+# Local workspace: source data + analysis/app output for testing & the vignette
+workspace/
+
 # Backup files
 *.bak
