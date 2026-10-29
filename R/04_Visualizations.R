@@ -343,6 +343,7 @@ plot_omni_ma <- function(obj,
 plot_omni_heatmap <- function(obj,
                               ntop          = 50,
                               pval_thresh   = 0.05,
+                              lfc_thresh    = 0,
                               color_up      = "#B2182B",
                               color_down    = "#2166AC",
                               cluster_rows  = TRUE,
@@ -375,9 +376,13 @@ plot_omni_heatmap <- function(obj,
     res_df      <- as.data.frame(res)
     res_df$padj <- ifelse(is.na(res_df$padj), 1, res_df$padj)
     sig         <- res_df[res_df$padj < pval_thresh, ]
+    if (lfc_thresh > 0)
+      sig       <- sig[abs(sig$log2FoldChange) > lfc_thresh, ]
 
     if (nrow(sig) == 0)
-      stop("No significant genes at padj < ", pval_thresh, call. = FALSE)
+      stop("No significant genes at padj < ", pval_thresh,
+           if (lfc_thresh > 0) paste0(" & |log2FC| > ", lfc_thresh) else "",
+           call. = FALSE)
 
     sig        <- sig[order(sig$padj), ]
     gene_names <- rownames(sig)[1:min(ntop, nrow(sig))]
@@ -454,7 +459,7 @@ plot_omni_qc_basics <- function(obj,
     p <- ggplot2::ggplot(
       df, ggplot2::aes(x = reorder(Sample, Library_Size),
                        y = Library_Size,
-                       fill = .data[[cond_col]])) +
+                       fill = .data[["Condition"]])) +
       ggplot2::geom_col(color = "white", linewidth = 0.2) +
       ggplot2::coord_flip() +
       ggplot2::scale_y_continuous(labels = scales::comma) +
@@ -465,7 +470,7 @@ plot_omni_qc_basics <- function(obj,
     p <- ggplot2::ggplot(
       df, ggplot2::aes(x = reorder(Sample, Detected_Genes),
                        y = Detected_Genes,
-                       fill = .data[[cond_col]])) +
+                       fill = .data[["Condition"]])) +
       ggplot2::geom_col(color = "white", linewidth = 0.2) +
       ggplot2::coord_flip() +
       ggplot2::scale_y_continuous(labels = scales::comma) +
@@ -715,6 +720,7 @@ plot_omni_pvalue_hist <- function(obj, bins = 40) {
 plot_omni_top_genes <- function(obj,
                                 n           = 12,
                                 pval_thresh = 0.05,
+                                lfc_thresh  = 0,
                                 color_by    = NULL,
                                 shape_by    = NULL) {
 
@@ -738,9 +744,13 @@ plot_omni_top_genes <- function(obj,
   res_df      <- as.data.frame(res)
   res_df$padj <- ifelse(is.na(res_df$padj), 1, res_df$padj)
   sig         <- res_df[res_df$padj < pval_thresh, ]
+  if (lfc_thresh > 0)
+    sig       <- sig[abs(sig$log2FoldChange) > lfc_thresh, ]
 
   if (nrow(sig) == 0)
-    stop("No significant genes at padj < ", pval_thresh, call. = FALSE)
+    stop("No significant genes at padj < ", pval_thresh,
+         if (lfc_thresh > 0) paste0(" & |log2FC| > ", lfc_thresh) else "",
+         call. = FALSE)
 
   top_genes <- rownames(sig[order(sig$padj), ])[1:min(n, nrow(sig))]
   vst_mat   <- SummarizedExperiment::assay(vsd)[top_genes, , drop = FALSE]

@@ -8,6 +8,7 @@ plot_omni_top_genes(
   obj,
   n = 12,
   pval_thresh = 0.05,
+  lfc_thresh = 0,
   color_by = NULL,
   shape_by = NULL
 )
