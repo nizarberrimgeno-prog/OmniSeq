@@ -43,10 +43,18 @@
 #' settings. This panel is commonly dominated in inflammatory bulk RNA-seq
 #' datasets and masking it reveals secondary biological signals.
 #'
-#' @source Crow YJ et al. (2015). Measurement of interferon-alpha using an
-#'   immune-based method in patients with monogenic type I interferonopathy.
-#'   J Clin Immunol. PMID: 26250437.
-#'   NIH Interferonopathy IRG-S panel (28 genes).
+#' @source Kim H, de Jesus AA, Brooks SR, Liu Y, Huang Y, VanTries R,
+#'   Montealegre Sanchez GA, Rotman Y, Gadina M, Goldbach-Mansky R (2018).
+#'   Development of a Validated Interferon Score Using NanoString Technology.
+#'   J Interferon Cytokine Res. 38(4):171-185. PMID: 29638206.
+#'   NIH/NIAMS IRG-S panel (28 genes), developed and validated in CANDLE,
+#'   SAVI, and NOMID patients.
+#'
+#'   (Corrected 2026-09-24: previously mis-cited as "Crow YJ et al. 2015,
+#'   J Clin Immunol, PMID 26250437" -- that PMID belongs to an unrelated
+#'   pediatric dizziness-questionnaire paper and was never a real IRG-S
+#'   source. The gene list itself was also corrected to match the actual
+#'   Kim et al. 2018 panel.)
 #'
 #' @details
 #' \strong{Recommended use}: Post-DE masking via \code{run_omni_mask()} to explore
@@ -55,11 +63,11 @@
 #'
 #' @export
 omniseq_isgs_28 <- c(
-  "IFI27", "IFI44", "IFI44L", "IFIT1", "IFIT2", "IFIT3",
-  "ISG15", "RSAD2", "SIGLEC1", "USP18", "CXCL10", "OAS1",
-  "OAS2", "OAS3", "OASL", "MX1", "MX2", "STAT1", "STAT2",
-  "EPSTI1", "GBP1", "HERC5", "LY6E", "SOCS1", "IFI6",
-  "CMPK2", "EIF2AK2", "XAF1"
+  "CXCL10", "DDX60", "EPSTI1", "GBP1", "HERC5", "HERC6",
+  "IFI27", "IFI44", "IFI44L", "IFI6", "IFIT1", "IFIT2",
+  "IFIT3", "IFIT5", "ISG15", "LAMP3", "LY6E", "MX1",
+  "OAS1", "OAS2", "OAS3", "OASL", "RSAD2", "RTP4",
+  "SIGLEC1", "SOCS1", "SPATS2L", "USP18"
 )
 
 

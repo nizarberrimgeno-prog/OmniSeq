@@ -8,6 +8,7 @@ plot_omni_heatmap(
   obj,
   ntop = 50,
   pval_thresh = 0.05,
+  lfc_thresh = 0,
   color_up = "#B2182B",
   color_down = "#2166AC",
   cluster_rows = TRUE,

@@ -8,10 +8,18 @@
 An object of class \code{character} of length 28.
 }
 \source{
-Crow YJ et al. (2015). Measurement of interferon-alpha using an
-immune-based method in patients with monogenic type I interferonopathy.
-J Clin Immunol. PMID: 26250437.
-NIH Interferonopathy IRG-S panel (28 genes).
+Kim H, de Jesus AA, Brooks SR, Liu Y, Huang Y, VanTries R,
+Montealegre Sanchez GA, Rotman Y, Gadina M, Goldbach-Mansky R (2018).
+Development of a Validated Interferon Score Using NanoString Technology.
+J Interferon Cytokine Res. 38(4):171-185. PMID: 29638206.
+NIH/NIAMS IRG-S panel (28 genes), developed and validated in CANDLE,
+SAVI, and NOMID patients.
+
+(Corrected 2026-09-24: previously mis-cited as "Crow YJ et al. 2015,
+J Clin Immunol, PMID 26250437" -- that PMID belongs to an unrelated
+pediatric dizziness-questionnaire paper and was never a real IRG-S
+source. The gene list itself was also corrected to match the actual
+Kim et al. 2018 panel.)
 }
 \usage{
 omniseq_isgs_28
