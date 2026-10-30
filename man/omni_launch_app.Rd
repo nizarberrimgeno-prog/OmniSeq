@@ -14,9 +14,16 @@ omni_launch_app(...)
 Called for its side effect (starts the Shiny app). Does not return.
 }
 \description{
-Starts a local Shiny app for running the core OmniSeq workflow —
-upload counts and metadata, run QC, run differential expression, and
-browse the results — without writing any R code.
+Starts a local Shiny app that runs the OmniSeq workflow without writing
+any R code: data upload (or a demo dataset / saved object), QC,
+differential expression with custom contrasts and signature masking,
+enrichment (ORA, GSEA, ssGSEA), TF activity, STRING, deconvolution,
+WGCNA, sPLS-DA, TE analysis, gene + TE multi-omics (sensor scores,
+DIABLO, mediation), and export of tables, figures and an HTML report.
+}
+\details{
+Modules whose optional dependencies are missing stay visible but show
+which packages to install (see \code{\link[=omni_check_deps]{omni_check_deps()}}).
 }
 \examples{
 \dontrun{

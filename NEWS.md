@@ -1,3 +1,20 @@
+# OmniSeq (development version)
+
+## Shiny app
+
+* `omni_launch_app()` now covers the full workflow instead of QC + DE only:
+  custom contrasts, signature masking, enrichment (ORA / GSEA / ssGSEA /
+  cross-contrast), TF activity, STRING, deconvolution, WGCNA and module
+  preservation, sPLS-DA, TE analysis, gene + TE multi-omics (sensor scores,
+  DIABLO, mediation), and export (ZIP, HTML report, `.rds`).
+* The app is split into one Shiny module per tab (`inst/shiny-app/R/`),
+  shares a single app-wide active contrast, captures package messages into
+  a session log, and offers a simulated demo dataset.
+* Fixed: the app now attaches OmniSeq itself, so launching it via
+  `OmniSeq::omni_launch_app()` without `library(OmniSeq)` no longer fails.
+* New `omni_set_contrast()` switches the active contrast without
+  recomputing anything.
+
 # OmniSeq 0.1.0
 
 Initial release.

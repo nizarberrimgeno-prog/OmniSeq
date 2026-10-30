@@ -1,181 +1,137 @@
 # =============================================================================
-# OmniSeq Shiny App — v1 (core workflow: upload -> QC -> DE -> results)
+# OmniSeq Shiny App
 #
 # No analysis logic lives here. Every computation is delegated to the
-# OmniSeq package functions (init_omniseq, run_omni_qc, run_omni_de,
-# plot_omni_*); this file only wires them to reactive UI inputs/outputs.
+# OmniSeq package functions; the modules in R/ (sourced automatically by
+# shiny::runApp()) only wire them to reactive UI inputs and outputs.
 #
-# Launched via OmniSeq::omni_launch_app(), which loads the package first —
-# so init_omniseq()/run_omni_qc()/etc. are called unqualified here.
+# Shared state passed to every module:
+#   state$obj      — the main OmniSeq object
+#   state$partner  — optional paired object (gene + TE) for multi-omics
+#   state$log      — messages emitted by package functions
 # =============================================================================
 
-ui <- bslib::page_sidebar(
+suppressPackageStartupMessages(library(OmniSeq))
+
+options(shiny.maxRequestSize = 1024^3)  # count matrices can be large
+
+ui <- bslib::page_navbar(
   title = "OmniSeq",
+  id    = "main_nav",
   theme = bslib::bs_theme(version = 5, primary = "#2166AC"),
+  fillable = FALSE,
 
   sidebar = bslib::sidebar(
-    width = 340,
-
-    shiny::h5("1. Upload data"),
-    shiny::fileInput("counts_file", "Count matrix (CSV)",
-                     accept = ".csv"),
-    shiny::helpText("Rows = features, columns = samples. First column = feature IDs."),
-    shiny::fileInput("meta_file", "Sample metadata (CSV)",
-                     accept = ".csv"),
-    shiny::helpText("Rows = samples. First column = sample IDs, must match count matrix columns."),
-
+    width = 270,
+    open  = "desktop",
+    shiny::h6("Analysis status"),
+    shiny::uiOutput("status"),
     shiny::hr(),
-    shiny::h5("2. Design"),
-    shiny::selectInput("condition_col", "Condition column", choices = NULL),
-    shiny::selectInput("covariates", "Covariates (optional)",
-                       choices = NULL, multiple = TRUE),
-    shiny::actionButton("run_qc", "Initialize & Run QC",
-                        class = "btn-primary w-100"),
-
+    shiny::selectInput("active_contrast", "Active contrast", choices = NULL),
+    shiny::helpText("DE plots, enrichment, TF and network modules all",
+                    "use the active contrast."),
     shiny::hr(),
-    shiny::h5("3. Differential Expression"),
-    shiny::selectInput("shrinkage", "LFC shrinkage",
-                       choices = c("apeglm", "ashr", "none"),
-                       selected = "apeglm"),
-    shiny::actionButton("run_de", "Run DE", class = "btn-primary w-100"),
-
-    shiny::hr(),
-    shiny::downloadButton("download_results", "Download results (CSV)",
-                          class = "w-100")
+    shiny::actionButton("reset", "Start over", class = "btn-sm btn-outline-danger")
   ),
 
-  bslib::navset_tab(
-    bslib::nav_panel(
-      "Overview",
-      shiny::verbatimTextOutput("overview_text")
-    ),
-    bslib::nav_panel(
-      "QC",
-      bslib::layout_column_wrap(
-        width = 1 / 2,
-        shiny::plotOutput("qc_libsize"),
-        shiny::plotOutput("qc_detected")
-      ),
-      shiny::plotOutput("qc_pca")
-    ),
-    bslib::nav_panel(
-      "Differential Expression",
-      bslib::layout_column_wrap(
-        width = 1 / 2,
-        shiny::plotOutput("de_volcano"),
-        shiny::plotOutput("de_ma")
-      ),
-      DT::DTOutput("de_table")
-    )
-  )
+  bslib::nav_panel("Data",             mod_data_ui("data")),
+  bslib::nav_panel("QC",               mod_qc_ui("qc")),
+  bslib::nav_panel("Differential expression", mod_de_ui("de")),
+  bslib::nav_panel("Enrichment",       mod_enrichment_ui("enrich")),
+  bslib::nav_panel("Biology",          mod_biology_ui("bio")),
+  bslib::nav_panel("Multivariate",     mod_multivariate_ui("multi")),
+  bslib::nav_panel("TE analysis",      mod_te_ui("te")),
+  bslib::nav_panel("Multi-omics",      mod_multiomics_ui("omics")),
+  bslib::nav_panel("Export",           mod_export_ui("export")),
+  bslib::nav_spacer(),
+  bslib::nav_item(shiny::tags$small(class = "text-muted",
+                                    paste0("v", utils::packageVersion("OmniSeq"))))
 )
 
 server <- function(input, output, session) {
 
-  metadata_rv <- shiny::reactive({
-    shiny::req(input$meta_file)
-    utils::read.csv(input$meta_file$datapath, row.names = 1,
-                    check.names = FALSE)
+  state <- shiny::reactiveValues(obj = NULL, partner = NULL,
+                                 log = character(0))
+
+  mod_data_server("data", state)
+  mod_qc_server("qc", state)
+  mod_de_server("de", state)
+  mod_enrichment_server("enrich", state)
+  mod_biology_server("bio", state)
+  mod_multivariate_server("multi", state)
+  mod_te_server("te", state)
+  mod_multiomics_server("omics", state)
+  mod_export_server("export", state)
+
+  # ---- Active contrast (app-wide) -----------------------------------------
+  shiny::observeEvent(state$obj, {
+    obj <- state$obj
+    cs  <- if (is.null(obj)) character(0) else omni_contrasts(obj)
+    shiny::updateSelectInput(session, "active_contrast", choices = cs,
+                             selected = if (length(cs)) obj$active_contrast)
+  }, ignoreNULL = FALSE)
+
+  shiny::observeEvent(input$active_contrast, {
+    obj <- state$obj
+    shiny::req(obj, nzchar(input$active_contrast))
+    if (!identical(obj$active_contrast, input$active_contrast))
+      state$obj <- omni_set_contrast(obj, input$active_contrast)
   })
 
-  shiny::observeEvent(metadata_rv(), {
-    cols <- colnames(metadata_rv())
-    shiny::updateSelectInput(session, "condition_col", choices = cols)
-    shiny::updateSelectInput(session, "covariates", choices = cols)
-  })
-
-  obj_rv <- shiny::reactiveVal(NULL)
-
-  shiny::observeEvent(input$run_qc, {
-    shiny::req(input$counts_file, input$meta_file, input$condition_col)
-
-    tryCatch({
-      counts <- as.matrix(
-        utils::read.csv(input$counts_file$datapath, row.names = 1,
-                        check.names = FALSE)
+  # ---- Status checklist ----------------------------------------------------
+  output$status <- shiny::renderUI({
+    obj <- state$obj
+    step <- function(done, label) {
+      shiny::div(
+        class = if (done) "text-success" else "text-muted",
+        shiny::HTML(if (done) "&#10003; " else "&#9675; "), label
       )
-      meta <- metadata_rv()
-
-      obj <- init_omniseq(
-        count_matrix  = counts,
-        metadata      = meta,
-        condition_col = input$condition_col,
-        covariates    = input$covariates
-      )
-      obj <- run_omni_qc(obj)
-      obj_rv(obj)
-
-      shiny::showNotification("QC complete.", type = "message")
-    }, error = function(e) {
-      shiny::showNotification(paste("Error:", e$message), type = "error",
-                              duration = NULL)
-    })
-  })
-
-  shiny::observeEvent(input$run_de, {
-    shiny::req(obj_rv())
-
-    tryCatch({
-      obj <- run_omni_de(obj_rv(), shrinkage = input$shrinkage)
-      obj_rv(obj)
-      shiny::showNotification("Differential expression complete.",
-                              type = "message")
-    }, error = function(e) {
-      shiny::showNotification(paste("Error:", e$message), type = "error",
-                              duration = NULL)
-    })
-  })
-
-  output$overview_text <- shiny::renderPrint({
-    shiny::req(obj_rv())
-    print(obj_rv())
-  })
-
-  output$qc_libsize <- shiny::renderPlot({
-    shiny::req(obj_rv())
-    plot_omni_qc_basics(obj_rv(), plot_type = "library_size")
-  })
-
-  output$qc_detected <- shiny::renderPlot({
-    shiny::req(obj_rv())
-    plot_omni_qc_basics(obj_rv(), plot_type = "detected_genes")
-  })
-
-  output$qc_pca <- shiny::renderPlot({
-    shiny::req(obj_rv())
-    plot_omni_qc_advanced(obj_rv(), plot_type = "pca_compare")
-  })
-
-  output$de_volcano <- shiny::renderPlot({
-    shiny::req(obj_rv())
-    shiny::req(length(omni_contrasts(obj_rv())) > 0)
-    plot_omni_volcano(obj_rv())
-  })
-
-  output$de_ma <- shiny::renderPlot({
-    shiny::req(obj_rv())
-    shiny::req(length(omni_contrasts(obj_rv())) > 0)
-    plot_omni_ma(obj_rv())
-  })
-
-  output$de_table <- DT::renderDT({
-    shiny::req(obj_rv())
-    shiny::req(length(omni_contrasts(obj_rv())) > 0)
-    res <- as.data.frame(omni_results(obj_rv()))
-    res <- cbind(Feature = rownames(res), res)
-    DT::datatable(res, rownames = FALSE,
-                  options = list(pageLength = 15, scrollX = TRUE))
-  })
-
-  output$download_results <- shiny::downloadHandler(
-    filename = function() "omniseq_results.csv",
-    content = function(file) {
-      shiny::req(obj_rv())
-      res <- as.data.frame(omni_results(obj_rv()))
-      res <- cbind(Feature = rownames(res), res)
-      utils::write.csv(res, file, row.names = FALSE)
     }
-  )
+    if (is.null(obj))
+      return(shiny::div(class = "text-muted small",
+                        "No data loaded. Start on the Data tab."))
+    has <- function(x) !is.null(x) && length(x) > 0
+    ac  <- obj$active_contrast
+    shiny::div(
+      class = "small",
+      shiny::div(sprintf("%s x %s %s", format(nrow(obj$data), big.mark = ","),
+                         ncol(obj$data),
+                         if (obj$params$data_type == "TE") "TE loci" else "genes")),
+      shiny::div(class = "text-muted mb-2", deparse(obj$params$formula)),
+      step(TRUE, "Object created"),
+      step(has(omni_qc(obj)), "QC"),
+      step(has(omni_model(obj)), "DESeq2 model"),
+      step(has(omni_contrasts(obj)),
+           sprintf("Contrasts (%d)", length(omni_contrasts(obj)))),
+      step(has(obj$enrichment_cache[[ac]]), "ORA"),
+      step(has(obj$gsea_cache[[ac]]), "GSEA"),
+      step(has(obj$advanced_ssgsea), "ssGSEA"),
+      step(has(obj$tf_results) || has(obj$tf_contrast_cache), "TF activity"),
+      step(has(obj$string_network), "STRING"),
+      step(has(obj$deconv), "Deconvolution"),
+      step(has(obj$wgcna), "WGCNA"),
+      step(has(obj$splsda), "sPLS-DA"),
+      if (obj$params$data_type == "TE") step(has(obj$te_family), "TE families"),
+      step(!is.null(state$partner), "Paired object")
+    )
+  })
+
+  shiny::observeEvent(input$reset, {
+    shiny::showModal(shiny::modalDialog(
+      "Discard the current object and all results?",
+      footer = shiny::tagList(
+        shiny::modalButton("Cancel"),
+        shiny::actionButton("reset_ok", "Discard", class = "btn-danger")
+      )
+    ))
+  })
+  shiny::observeEvent(input$reset_ok, {
+    state$obj <- NULL
+    state$partner <- NULL
+    state$log <- character(0)
+    shiny::removeModal()
+    bslib::nav_select("main_nav", "Data")
+  })
 }
 
 shiny::shinyApp(ui, server)

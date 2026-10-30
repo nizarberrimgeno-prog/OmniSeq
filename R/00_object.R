@@ -153,6 +153,25 @@ omni_contrasts <- function(obj) {
   names(obj$results_cache)
 }
 
+#' Set the active contrast
+#'
+#' Switches which cached contrast downstream functions (plots, enrichment,
+#' TF activity, networks) operate on. No results are recomputed.
+#'
+#' @param obj An OmniSeq object.
+#' @param contrast Character. A contrast name from [omni_contrasts()].
+#' @return The OmniSeq object with `active_contrast` updated.
+#' @export
+omni_set_contrast <- function(obj, contrast) {
+  .check_class(obj)
+  if (!is.character(contrast) || length(contrast) != 1 ||
+      !contrast %in% names(obj$results_cache))
+    stop("Contrast '", contrast, "' not found. Available: ",
+         paste(names(obj$results_cache), collapse = ", "), call. = FALSE)
+  obj$active_contrast <- contrast
+  obj
+}
+
 #' Get the QC metrics slot
 #'
 #' @param obj An OmniSeq object.
