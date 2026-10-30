@@ -94,6 +94,25 @@ safe_plot <- function(expr) {
   )
 }
 
+# Same as safe_plot() for htmlwidget-returning functions (plotly, DT).
+safe_widget <- function(expr) {
+  tryCatch(
+    suppressMessages(expr),
+    error = function(e) shiny::validate(shiny::need(FALSE, conditionMessage(e)))
+  )
+}
+
+# plotly is a suggested dependency: only build plotly outputs/renderers when
+# it is installed, so the app still starts without it.
+plotly_output <- function(id, height = "550px") {
+  if (pkgs_ok("plotly")) plotly::plotlyOutput(id, height = height)
+}
+
+render_plotly <- function(expr, env = parent.frame()) {
+  if (!pkgs_ok("plotly")) return(shiny::renderUI(NULL))
+  plotly::renderPlotly(substitute(expr), env = env, quoted = TRUE)
+}
+
 # DE results table for a contrast as a plain data.frame with a Feature column.
 de_table <- function(obj, contrast = NULL) {
   res <- omni_results(obj, contrast = contrast)

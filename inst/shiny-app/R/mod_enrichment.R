@@ -56,6 +56,40 @@ mod_enrichment_ui <- function(id) {
     ),
 
     bslib::nav_panel(
+      "ORA Up/Down",
+      deps_notice(c("clusterProfiler", "msigdbr", "plotly", "htmltools")),
+      bslib::layout_sidebar(
+        sidebar = bslib::sidebar(
+          width = 300,
+          shiny::checkboxGroupInput(ns("ud_db"), "Databases",
+                                    c("GO-BP", "Hallmark"),
+                                    selected = c("GO-BP", "Hallmark")),
+          shiny::sliderInput(ns("ud_lfc"), "|log2FC| >", 0, 3, 1, step = 0.25),
+          shiny::selectInput(ns("ud_pval"), "padj <",
+                             c(0.001, 0.01, 0.05, 0.1), selected = 0.05),
+          shiny::actionButton(ns("run_ud"), "Run ORA (active contrast)",
+                              class = "btn-primary w-100"),
+          shiny::helpText("Up- and down-regulated genes are tested as two",
+                          "clusters in one call (run_omni_ora_updown).",
+                          "Run it on several contrasts to compare them."),
+          shiny::hr(),
+          shiny::selectInput(ns("ud_show_db"), "Show database",
+                             c("GO-BP", "Hallmark")),
+          shiny::sliderInput(ns("ud_n"), "Terms per direction", 5, 40, 20),
+          shiny::selectInput(ns("ud_cmp"), "Compare contrasts",
+                             choices = NULL, multiple = TRUE)
+        ),
+        bslib::navset_underline(
+          bslib::nav_panel("Active contrast (interactive)",
+                           plotly_output(ns("ud_plot"), height = "650px"),
+                           DT::DTOutput(ns("ud_table"))),
+          bslib::nav_panel("Across contrasts",
+                           shiny::plotOutput(ns("ud_compare"), height = "750px"))
+        )
+      )
+    ),
+
+    bslib::nav_panel(
       "GSEA",
       deps_notice(c("clusterProfiler", "enrichplot", "msigdbr")),
       bslib::layout_sidebar(
@@ -102,7 +136,7 @@ mod_enrichment_ui <- function(id) {
     ),
 
     bslib::nav_panel(
-      "Compare contrasts",
+      "GO across contrasts",
       deps_notice(c("clusterProfiler", "enrichplot")),
       bslib::layout_sidebar(
         sidebar = bslib::sidebar(
@@ -161,6 +195,72 @@ mod_enrichment_server <- function(id, state) {
     })
     output$dl_ora <- csv_download("ORA_results.csv",
                                   function() as_result_df(ora_res()))
+
+    # ---- ORA Up/Down ---------------------------------------------------------
+    # run_omni_ora_updown() returns its results rather than storing them in
+    # the object, so the app keeps them per contrast in state$ora_updown.
+    shiny::observeEvent(input$run_ud, {
+      obj <- need_contrast(state)
+      shiny::req(length(input$ud_db) > 0)
+      key <- obj$active_contrast
+      out <- run_step(state, paste("ORA Up/Down:", key), {
+        run_omni_ora_updown(obj,
+                            pval_thresh = as.numeric(input$ud_pval),
+                            lfc_thresh  = input$ud_lfc,
+                            databases   = input$ud_db)
+      })
+      if (!is.null(out)) {
+        if (length(out) == 0)
+          shiny::showNotification("No significant terms in any database.",
+                                  type = "warning")
+        ud <- state$ora_updown
+        ud[[key]] <- out
+        state$ora_updown <- ud
+      }
+    })
+
+    shiny::observeEvent(state$ora_updown, {
+      done <- names(state$ora_updown)
+      shiny::updateSelectInput(session, "ud_cmp", choices = done,
+                               selected = .nz(shiny::isolate(input$ud_cmp)) %||% done)
+    })
+
+    # plot_omni_enrichment_interactive() returns tagList(plotly, datatable).
+    # Rendered through renderUI, the datatable's filter JS (noUiSlider) is not
+    # loaded and the resulting error also stops plotly drawing, so each
+    # widget goes through its own output instead.
+    ud_widgets <- shiny::reactive({
+      obj <- need_contrast(state)
+      res <- state$ora_updown[[obj$active_contrast]]
+      shiny::validate(shiny::need(!is.null(res), paste0(
+        "No Up/Down ORA for '", obj$active_contrast, "'. Click 'Run ORA'.")))
+      shiny::validate(shiny::need(!is.null(res[[input$ud_show_db]]), paste0(
+        input$ud_show_db, ": no significant terms (or not run) for this contrast.")))
+      safe_widget(plot_omni_enrichment_interactive(
+        res[[input$ud_show_db]], n_top = input$ud_n, width = NULL, height = 650,
+        title = paste(input$ud_show_db, "--", obj$active_contrast)))
+    })
+
+    output$ud_plot  <- render_plotly(ud_widgets()[[1]])
+    output$ud_table <- DT::renderDT({
+      # The plot above already shows why nothing is available.
+      w <- tryCatch(ud_widgets(), error = function(e) NULL)
+      shiny::req(length(w) > 1)
+      w[[2]]
+    })
+
+    output$ud_compare <- shiny::renderPlot({
+      keys <- input$ud_cmp
+      shiny::validate(shiny::need(length(keys) > 0,
+                                  "Run Up/Down ORA on one or more contrasts first."))
+      res <- lapply(state$ora_updown[keys], function(x) x[[input$ud_show_db]])
+      res <- res[!vapply(res, is.null, logical(1))]
+      shiny::validate(shiny::need(length(res) > 0, paste0(
+        "No ", input$ud_show_db, " terms in the selected contrasts.")))
+      safe_plot(plot_omni_enrichment_comparison(
+        res, n_top = min(input$ud_n, 15),
+        title = paste(input$ud_show_db, "enrichment across contrasts")))
+    })
 
     # ---- GSEA --------------------------------------------------------------
     shiny::observeEvent(input$run_gsea, {

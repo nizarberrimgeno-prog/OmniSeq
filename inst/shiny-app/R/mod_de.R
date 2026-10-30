@@ -80,6 +80,12 @@ mod_de_ui <- function(id) {
         shiny::downloadButton(ns("dl_volcano"), "PNG", class = "btn-sm")
       ),
       bslib::nav_panel(
+        "Interactive volcano",
+        deps_notice("plotly"),
+        shiny::helpText("Hover a point for gene, log2FC and padj; drag to zoom."),
+        plotly_output(ns("volcano_int"), height = "600px")
+      ),
+      bslib::nav_panel(
         "MA",
         shiny::plotOutput(ns("ma"), height = "560px"),
         shiny::downloadButton(ns("dl_ma"), "PNG", class = "btn-sm")
@@ -104,7 +110,8 @@ mod_de_ui <- function(id) {
       ),
       bslib::nav_panel(
         "Results table",
-        shiny::checkboxInput(ns("sig_only"), "Significant features only", FALSE),
+        shiny::checkboxInput(ns("sig_only"),
+                             "Only features below the padj threshold", FALSE),
         DT::DTOutput(ns("table")),
         shiny::downloadButton(ns("dl_table"), "Download CSV", class = "btn-sm")
       )
@@ -229,6 +236,7 @@ mod_de_server <- function(id, state) {
       plot_omni_heatmap(need_contrast(state),
                         ntop         = input$heat_n,
                         pval_thresh  = pval(),
+                        lfc_thresh   = input$lfc_thresh,
                         custom_genes = .nz(genes[nzchar(genes)]))
     }
     pca_fn <- function() plot_omni_pca(need_model(state),
@@ -243,20 +251,29 @@ mod_de_server <- function(id, state) {
       plot_omni_top_genes(need_contrast(state),
                           n           = 12,
                           pval_thresh = pval(),
+                          lfc_thresh  = input$lfc_thresh,
                           color_by    = .nz(input$color_by),
                           shape_by    = .nz(input$shape_by))))
     output$phist <- shiny::renderPlot(safe_plot(
       plot_omni_pvalue_hist(need_contrast(state))))
+    output$volcano_int <- render_plotly({
+      safe_widget(plot_omni_volcano_interactive(need_contrast(state),
+                                                pval_thresh = pval(),
+                                                lfc_thresh  = input$lfc_thresh,
+                                                width = NULL, height = NULL))
+    })
 
     table_df <- shiny::reactive({
       df <- res_df()
       if (isTRUE(input$sig_only))
-        df <- df[!is.na(df$padj) & df$padj < pval() &
-                   abs(df$log2FoldChange) > input$lfc_thresh, , drop = FALSE]
+        df <- df[!is.na(df$padj) & df$padj < pval(), , drop = FALSE]
       df[order(df$padj), , drop = FALSE]
     })
 
-    output$table <- DT::renderDT(omni_dt(table_df()))
+    output$table <- DT::renderDT(safe_widget(
+      omni_gene_search_table(need_contrast(state),
+                             pval_thresh = if (isTRUE(input$sig_only)) pval(),
+                             page_length = 15)))
 
     safe_name <- function() gsub("[^A-Za-z0-9_.-]+", "_",
                                  state$obj$active_contrast %||% "contrast")

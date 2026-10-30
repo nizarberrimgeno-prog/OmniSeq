@@ -107,12 +107,13 @@ OmniSeq::omni_launch_app()
 |---|---|
 | Data | Upload counts + metadata (CSV/TSV), a simulated demo dataset, or reload a saved object; input validation; design setup |
 | QC | `run_omni_qc()` and the QC plots |
-| Differential expression | `run_omni_de()`, custom contrasts (`run_omni_contrast()`), signature masking (`run_omni_mask()`); volcano, MA, heatmap, PCA, top features, results table |
-| Enrichment | ORA, GSEA, ssGSEA, cross-contrast comparison |
+| Differential expression | `run_omni_de()`, custom contrasts (`run_omni_contrast()`), signature masking (`run_omni_mask()`); volcano (static + interactive), MA, heatmap, PCA, top features, searchable results table |
+| Enrichment | ORA, Up/Down ORA across GO-BP + Hallmark (interactive, and compared across contrasts), GSEA, ssGSEA, GO across contrasts |
+| Compare contrasts | log2FC concordance of two contrasts; interaction-term scatter (interactive + static) and dumbbell |
 | Biology | TF activity, STRING network, immune deconvolution |
 | Multivariate | WGCNA (incl. per-group networks + module preservation), sPLS-DA |
 | TE analysis | TE family analysis, TE plots, proximity + GREAT |
-| Multi-omics | Pair a gene and a TE object: sensor scores, TE-gene correlation, WGCNA TE traits, DIABLO, mediation |
+| Multi-omics | Pair a gene and a TE object: sensor scores (with custom sensor TE families), TE-gene correlation, WGCNA TE traits, DIABLO, mediation |
 | Export | ZIP of all tables/figures, HTML report, `.rds` object, session log, dependency status |
 
 The active contrast is chosen once in the sidebar and drives every tab.

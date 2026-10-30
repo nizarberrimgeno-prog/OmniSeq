@@ -39,6 +39,14 @@ mod_multiomics_ui <- function(id) {
           shiny::selectInput(ns("sens_excl"), "Exclude groups", choices = NULL,
                              multiple = TRUE),
           shiny::numericInput(ns("sens_min"), "Min loci per family", 5, 1, 100),
+          shiny::helpText("Sensor TE families (comma-separated). Leave blank",
+                          "for the package defaults (RepeatMasker names);",
+                          "set them when your TE annotation names families",
+                          "differently, e.g. Telescope's HML2 for HERVK."),
+          shiny::textInput(ns("fam_cgas"), "cGAS-STING families"),
+          shiny::textInput(ns("fam_rigi"), "RIG-I / MDA5 families"),
+          shiny::textInput(ns("fam_tlr7"), "TLR7 / TLR8 families"),
+          shiny::uiOutput(ns("fam_hint")),
           shiny::actionButton(ns("run_sens"), "Score sensors",
                               class = "btn-outline-primary w-100")
         ),
@@ -220,9 +228,28 @@ mod_multiomics_server <- function(id, state) {
         run_omni_sensor_score(p$gene, te_obj = p$te,
                               group_col      = input$sens_col,
                               exclude_groups = .nz(input$sens_excl),
-                              min_loci       = as.integer(input$sens_min))
+                              min_loci       = as.integer(input$sens_min),
+                              cgas_families  = split_families(input$fam_cgas),
+                              rigi_families  = split_families(input$fam_rigi),
+                              tlr7_families  = split_families(input$fam_tlr7))
       })
       if (!is.null(out)) set_gene(out)
+    })
+
+    split_families <- function(x) {
+      f <- trimws(strsplit(x %||% "", "[,;\n]")[[1]])
+      .nz(f[nzchar(f)])
+    }
+
+    # Most abundant TE families in the paired TE object, to help fill in the
+    # sensor family fields with names that actually occur in the data.
+    output$fam_hint <- shiny::renderUI({
+      te <- tryCatch(pair()$te, error = function(e) NULL)
+      if (is.null(te)) return(NULL)
+      fam <- sort(table(sub("^[^:]+:[^:]+:", "", rownames(te$data))),
+                  decreasing = TRUE)
+      shiny::helpText(shiny::strong("Families in your TE data: "),
+                      paste(utils::head(names(fam), 25), collapse = ", "))
     })
 
     sens_obj <- shiny::reactive({

@@ -9,6 +9,8 @@
 #   state$obj      — the main OmniSeq object
 #   state$partner  — optional paired object (gene + TE) for multi-omics
 #   state$log      — messages emitted by package functions
+#   state$ora_updown — run_omni_ora_updown() results per contrast (the
+#                    package returns these instead of caching them)
 # =============================================================================
 
 suppressPackageStartupMessages(library(OmniSeq))
@@ -38,6 +40,7 @@ ui <- bslib::page_navbar(
   bslib::nav_panel("QC",               mod_qc_ui("qc")),
   bslib::nav_panel("Differential expression", mod_de_ui("de")),
   bslib::nav_panel("Enrichment",       mod_enrichment_ui("enrich")),
+  bslib::nav_panel("Compare contrasts", mod_compare_ui("compare")),
   bslib::nav_panel("Biology",          mod_biology_ui("bio")),
   bslib::nav_panel("Multivariate",     mod_multivariate_ui("multi")),
   bslib::nav_panel("TE analysis",      mod_te_ui("te")),
@@ -51,12 +54,13 @@ ui <- bslib::page_navbar(
 server <- function(input, output, session) {
 
   state <- shiny::reactiveValues(obj = NULL, partner = NULL,
-                                 log = character(0))
+                                 log = character(0), ora_updown = list())
 
   mod_data_server("data", state)
   mod_qc_server("qc", state)
   mod_de_server("de", state)
   mod_enrichment_server("enrich", state)
+  mod_compare_server("compare", state)
   mod_biology_server("bio", state)
   mod_multivariate_server("multi", state)
   mod_te_server("te", state)
@@ -129,6 +133,7 @@ server <- function(input, output, session) {
     state$obj <- NULL
     state$partner <- NULL
     state$log <- character(0)
+    state$ora_updown <- list()
     shiny::removeModal()
     bslib::nav_select("main_nav", "Data")
   })
