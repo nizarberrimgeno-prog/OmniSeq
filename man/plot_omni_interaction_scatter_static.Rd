@@ -33,9 +33,7 @@ coefficient from the joint interaction model).}
 \item{label_a, label_b}{Axis labels. Default to the contrast names.}
 
 \item{pval_thresh}{Adjusted p-value threshold for the interaction test.
-Default \code{0.05}. (No LFC threshold is applied to the interaction term by
-default, since apeglm/ashr shrinkage typically keeps true interaction
-effects small; pass \code{lfc_thresh} to add one.)}
+Default \code{0.05}.}
 
 \item{flip_lfc_thresh}{Minimum absolute log2FC required in BOTH contrasts
 for a sign-flipped gene to be colored as "reversed" rather than treated

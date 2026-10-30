@@ -12,7 +12,7 @@ plot_omni_interaction_scatter(
   label_a = NULL,
   label_b = NULL,
   pval_thresh = 0.05,
-  lfc_thresh = 0,
+  flip_lfc_thresh = 0.3,
   title = NULL,
   width = 800,
   height = 550
@@ -32,12 +32,11 @@ coefficient from the joint interaction model).}
 \item{label_a, label_b}{Axis labels. Default to the contrast names.}
 
 \item{pval_thresh}{Adjusted p-value threshold for the interaction test.
-Default \code{0.05}. (No LFC threshold is applied to the interaction term by
-default, since apeglm/ashr shrinkage typically keeps true interaction
-effects small; pass \code{lfc_thresh} to add one.)}
+Default \code{0.05}.}
 
-\item{lfc_thresh}{Optional absolute log2FoldChange threshold on the
-interaction coefficient itself. Default \code{0} (no filter).}
+\item{flip_lfc_thresh}{Minimum absolute log2FC required in BOTH contrasts
+for a sign-flipped significant gene to be colored as "reversed" rather
+than amplification noise. Default \code{0.3}.}
 
 \item{title}{Optional custom title.}
 
@@ -50,8 +49,15 @@ A plotly object.
 For a formal interaction test (e.g. from a \code{~ ... + FactorA * FactorB}
 model), plots the two simple-effect contrasts that the interaction
 coefficient contrasts against each other — one point per gene — colored by
-whether the \strong{interaction coefficient itself} is significant, not by
-either simple-effect contrast's own significance. A gene on the dotted
-y=x line has an identical effect in both arms (interaction = 0); its
-distance from that line is the interaction log2FC.
+whether the \strong{interaction coefficient itself} is significant (padj
+alone, no LFC filter — the established convention for interaction
+coefficients), and, among significant genes, further split into
+amplification/dampening (same sign in both contrasts) vs. a genuine
+\strong{direction reversal} (opposite sign, gated on a minimum magnitude in
+both contrasts so near-zero noise isn't miscounted as "reversed" — see
+\code{flip_lfc_thresh}). A gene on the dotted y=x line has an identical effect
+in both arms (interaction = 0); its distance from that line is the
+interaction log2FC. Axes are forced symmetric around 0 so the y=x
+diagonal always runs corner-to-corner. Interactive twin of
+\code{\link[=plot_omni_interaction_scatter_static]{plot_omni_interaction_scatter_static()}}; keep both in sync.
 }

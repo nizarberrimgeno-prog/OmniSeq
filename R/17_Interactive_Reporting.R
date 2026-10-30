@@ -250,10 +250,17 @@ plot_omni_lfc_scatter_interactive <- function(obj,
 #' For a formal interaction test (e.g. from a `~ ... + FactorA * FactorB`
 #' model), plots the two simple-effect contrasts that the interaction
 #' coefficient contrasts against each other — one point per gene — colored by
-#' whether the **interaction coefficient itself** is significant, not by
-#' either simple-effect contrast's own significance. A gene on the dotted
-#' y=x line has an identical effect in both arms (interaction = 0); its
-#' distance from that line is the interaction log2FC.
+#' whether the **interaction coefficient itself** is significant (padj
+#' alone, no LFC filter — the established convention for interaction
+#' coefficients), and, among significant genes, further split into
+#' amplification/dampening (same sign in both contrasts) vs. a genuine
+#' **direction reversal** (opposite sign, gated on a minimum magnitude in
+#' both contrasts so near-zero noise isn't miscounted as "reversed" — see
+#' `flip_lfc_thresh`). A gene on the dotted y=x line has an identical effect
+#' in both arms (interaction = 0); its distance from that line is the
+#' interaction log2FC. Axes are forced symmetric around 0 so the y=x
+#' diagonal always runs corner-to-corner. Interactive twin of
+#' [plot_omni_interaction_scatter_static()]; keep both in sync.
 #'
 #' @param obj A validated OmniSeq object.
 #' @param contrast_a,contrast_b The two simple-effect contrast names (e.g.
@@ -264,11 +271,10 @@ plot_omni_lfc_scatter_interactive <- function(obj,
 #'   coefficient from the joint interaction model).
 #' @param label_a,label_b Axis labels. Default to the contrast names.
 #' @param pval_thresh Adjusted p-value threshold for the interaction test.
-#'   Default `0.05`. (No LFC threshold is applied to the interaction term by
-#'   default, since apeglm/ashr shrinkage typically keeps true interaction
-#'   effects small; pass `lfc_thresh` to add one.)
-#' @param lfc_thresh Optional absolute log2FoldChange threshold on the
-#'   interaction coefficient itself. Default `0` (no filter).
+#'   Default `0.05`.
+#' @param flip_lfc_thresh Minimum absolute log2FC required in BOTH contrasts
+#'   for a sign-flipped significant gene to be colored as "reversed" rather
+#'   than amplification noise. Default `0.3`.
 #' @param title Optional custom title.
 #' @param width,height Plot pixel dimensions.
 #'
@@ -278,13 +284,13 @@ plot_omni_interaction_scatter <- function(obj,
                                           contrast_a,
                                           contrast_b,
                                           interaction_contrast,
-                                          label_a     = NULL,
-                                          label_b     = NULL,
-                                          pval_thresh = 0.05,
-                                          lfc_thresh  = 0,
-                                          title       = NULL,
-                                          width       = 800,
-                                          height      = 550) {
+                                          label_a         = NULL,
+                                          label_b         = NULL,
+                                          pval_thresh     = 0.05,
+                                          flip_lfc_thresh = 0.3,
+                                          title           = NULL,
+                                          width           = 800,
+                                          height          = 550) {
 
   validate_omniseq(obj)
   .omni_require_interactive_pkgs()
@@ -310,16 +316,22 @@ plot_omni_interaction_scatter <- function(obj,
   names(d)[names(d) == "log2FoldChange"] <- "Interaction_LFC"
   names(d)[names(d) == "padj"]           <- "Interaction_padj"
 
-  is_sig <- d$Interaction_padj < pval_thresh &
-    (lfc_thresh <= 0 | abs(d$Interaction_LFC) > lfc_thresh)
-  d$Interaction_sig <- ifelse(is_sig,
-                               paste0("Significant interaction (padj<", pval_thresh, ")"),
-                               "Not significant")
-  sig_label <- paste0("Significant interaction (padj<", pval_thresh, ")")
-  cols <- stats::setNames(c("#C44E52", "grey80"), c(sig_label, "Not significant"))
+  # Direction-reversal flag mirrors plot_omni_interaction_scatter_static():
+  # sign(A) != sign(B) alone massively overcounts "reversed" genes from
+  # near-zero noise -- gate on a minimum magnitude in BOTH contrasts too
+  # (naive sign-only rule flagged 142-1,690 genes/contrast on real data;
+  # the magnitude-gated rule found the true number was 0-1).
+  sig <- d$Interaction_padj < pval_thresh
+  flipped <- sig & sign(d$log2FoldChange_A) != sign(d$log2FoldChange_B) &
+    abs(d$log2FoldChange_A) > flip_lfc_thresh & abs(d$log2FoldChange_B) > flip_lfc_thresh
+
+  d$Interaction_sig <- ifelse(flipped, "Significant (reversed direction)",
+                        ifelse(sig, "Significant", "Not significant"))
+  cols <- stats::setNames(c("grey80", "#C44E52", "#8172B2"),
+                           c("Not significant", "Significant", "Significant (reversed direction)"))
 
   d_bg <- d[d$Interaction_sig == "Not significant", ]
-  d_fg <- d[d$Interaction_sig == sig_label, ]
+  d_fg <- d[d$Interaction_sig != "Not significant", ]
 
   hover_txt <- function(dd) paste0("Gene: ", dd$Gene,
                                     "<br>", label_a, " log2FC: ", round(dd$log2FoldChange_A, 2),
@@ -327,26 +339,41 @@ plot_omni_interaction_scatter <- function(obj,
                                     "<br>Interaction log2FC: ", round(dd$Interaction_LFC, 2),
                                     "<br>Interaction padj: ", signif(dd$Interaction_padj, 3))
 
-  rng   <- range(c(d$log2FoldChange_A, d$log2FoldChange_B), na.rm = TRUE)
-  title <- title %||% paste0(label_a, " vs ", label_b,
-                              "  (interaction padj<", pval_thresh, ", ", nrow(d_fg), " genes)")
+  # Axes forced symmetric around 0 (not just min/max) so the y=x diagonal
+  # always runs corner-to-corner and distance from it reads consistently.
+  M   <- max(abs(c(d$log2FoldChange_A, d$log2FoldChange_B)), na.rm = TRUE)
+  rng <- c(-M, M)
 
-  plotly::plot_ly(width = width, height = height) |>
+  n_sig  <- sum(sig)
+  n_flip <- sum(flipped)
+  title  <- title %||% paste0(label_a, " vs ", label_b,
+                               "  (interaction padj<", pval_thresh, ", ", n_sig,
+                               " genes", if (n_flip > 0) paste0(", ", n_flip, " reversed") else "", ")")
+
+  p <- plotly::plot_ly(width = width, height = height) |>
     plotly::add_trace(x = rng, y = rng, type = "scatter", mode = "lines",
                        line = list(color = "black", dash = "dot", width = 1),
                        hoverinfo = "skip", showlegend = FALSE) |>
     plotly::add_trace(data = d_bg, x = ~log2FoldChange_A, y = ~log2FoldChange_B,
                        type = "scatter", mode = "markers",
                        marker = list(color = cols["Not significant"], size = 4, opacity = 0.25),
-                       text = hover_txt(d_bg), hoverinfo = "text", name = "Not significant") |>
-    plotly::add_trace(data = d_fg, x = ~log2FoldChange_A, y = ~log2FoldChange_B,
-                       type = "scatter", mode = "markers",
-                       marker = list(color = cols[sig_label], size = 6, opacity = 0.8),
-                       text = hover_txt(d_fg), hoverinfo = "text",
-                       name = paste0(sig_label, " (n=", nrow(d_fg), ")")) |>
+                       text = hover_txt(d_bg), hoverinfo = "text", name = "Not significant")
+
+  for (cat in c("Significant", "Significant (reversed direction)")) {
+    dd <- d_fg[d_fg$Interaction_sig == cat, ]
+    if (nrow(dd) == 0) next
+    p <- p |>
+      plotly::add_trace(data = dd, x = ~log2FoldChange_A, y = ~log2FoldChange_B,
+                         type = "scatter", mode = "markers",
+                         marker = list(color = cols[cat], size = 6, opacity = 0.8),
+                         text = hover_txt(dd), hoverinfo = "text",
+                         name = paste0(cat, " (n=", nrow(dd), ")"))
+  }
+
+  p |>
     plotly::layout(title = title,
-                    xaxis = list(title = paste0("log2FC, ", label_a)),
-                    yaxis = list(title = paste0("log2FC, ", label_b)),
+                    xaxis = list(title = paste0("log2FC, ", label_a), range = rng, scaleanchor = "y"),
+                    yaxis = list(title = paste0("log2FC, ", label_b), range = rng),
                     legend = list(title = list(text = "Formal interaction test")))
 }
 
