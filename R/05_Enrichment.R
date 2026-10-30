@@ -141,6 +141,159 @@ run_omni_enrichment <- function(obj,
 
 
 # =============================================================================
+# 1B. ORA, UP/DOWN SPLIT, MULTIPLE DATABASES AT ONCE
+# =============================================================================
+
+#' Run Over-Representation Analysis, Split by Direction, Across Multiple Databases
+#'
+#' The workflow `run_omni_enrichment()` runs for one ontology/direction at a
+#' time. This wraps that same significance logic but (1) always computes Up
+#' and Down as two parallel clusters in one `compareCluster` call per
+#' database (so they can be plotted/compared side by side), and (2) runs
+#' GO-BP and MSigDB Hallmark ORA in the same call, since in practice these
+#' are almost always wanted together. Each returned element is a
+#' `compareClusterResult` ready to pass straight into
+#' [plot_omni_enrichment_interactive()] for an interactive dot plot with a
+#' linked, searchable gene table directly beneath it.
+#'
+#' @param obj A validated OmniSeq object with DE results.
+#' @param contrast Contrast name to pull from `results_cache`. Defaults to
+#'   `obj$active_contrast`.
+#' @param pval_thresh Adjusted p-value threshold for the input DEG list.
+#'   Default `0.05`.
+#' @param lfc_thresh Absolute log2FoldChange threshold for the input DEG
+#'   list. Default `1`. Set to `0` to use DESeq2's padj cutoff alone (e.g.
+#'   for a formal interaction coefficient, where no LFC filter is typically
+#'   applied — see the package's interaction-test functions).
+#' @param databases Character vector, any of `"GO-BP"`, `"Hallmark"`.
+#'   Default both.
+#' @param org_db Character. Annotation database for GO-BP. Inherited from
+#'   `obj$params$org_db` if `NULL`.
+#' @param species Character. Species name for `msigdbr` (Hallmark). Inherited
+#'   from `obj$params$species` if `NULL`.
+#' @param pvalue_cutoff Enrichment significance threshold (applied inside
+#'   `enrichGO`/`enricher`). Default `0.05`.
+#'
+#' @return A named list, one element per requested database (`` `GO-BP` ``
+#'   and/or `Hallmark`), each a `compareClusterResult` with `Cluster` levels
+#'   `"Up"` and `"Down"`. An element is `NULL` (with a message, not an error)
+#'   if that database found zero significant terms for this gene list — pass
+#'   through this check before plotting.
+#'
+#' @examples
+#' \dontrun{
+#' res <- run_omni_ora_updown(obj, contrast = "WT_R848 vs WT_NS")
+#' if (!is.null(res[["GO-BP"]]))
+#'   plot_omni_enrichment_interactive(res[["GO-BP"]], title = "GO-BP -- WT_R848 vs WT_NS")
+#' if (!is.null(res$Hallmark))
+#'   plot_omni_enrichment_interactive(res$Hallmark, title = "Hallmark -- WT_R848 vs WT_NS")
+#' }
+#'
+#' @export
+run_omni_ora_updown <- function(obj,
+                                contrast      = NULL,
+                                pval_thresh   = 0.05,
+                                lfc_thresh    = 1,
+                                databases     = c("GO-BP", "Hallmark"),
+                                org_db        = NULL,
+                                species       = NULL,
+                                pvalue_cutoff = 0.05) {
+
+  validate_omniseq(obj)
+  .require_pkg("clusterProfiler")
+  databases <- match.arg(databases, c("GO-BP", "Hallmark"), several.ok = TRUE)
+
+  key <- contrast %||% obj$active_contrast
+  res <- omni_results(obj, contrast = key)
+  if (is.null(res))
+    stop("No DE results for contrast '", key, "'. Run run_omni_de()/",
+         "run_omni_contrast() first.", call. = FALSE)
+
+  d <- as.data.frame(res)
+  d$Gene <- rownames(d)
+  d$padj <- ifelse(is.na(d$padj), 1, d$padj)
+  sig <- d[d$padj < pval_thresh & (lfc_thresh <= 0 | abs(d$log2FoldChange) > lfc_thresh), ]
+  if (nrow(sig) == 0)
+    stop("No significant genes at padj<", pval_thresh,
+         if (lfc_thresh > 0) paste0(" & |log2FC|>", lfc_thresh) else "",
+         " for contrast '", key, "'.", call. = FALSE)
+
+  up_genes   <- sig$Gene[sig$log2FoldChange > 0]
+  down_genes <- sig$Gene[sig$log2FoldChange < 0]
+  message("[run_omni_ora_updown] ", key, " -- Up: ", length(up_genes),
+          "  Down: ", length(down_genes))
+  gene_clusters <- list(Up = up_genes, Down = down_genes)
+  gene_clusters <- gene_clusters[vapply(gene_clusters, length, integer(1)) > 0]
+  if (length(gene_clusters) == 0)
+    stop("Neither direction has any genes to test.", call. = FALSE)
+
+  out <- list()
+
+  if ("GO-BP" %in% databases) {
+    org_db_r <- org_db %||% obj$params$org_db
+    .require_pkg(org_db_r)
+    suppressPackageStartupMessages(do.call(library, list(org_db_r, character.only = TRUE)))
+    cc <- tryCatch(
+      clusterProfiler::compareCluster(
+        geneCluster   = gene_clusters,
+        ## Pass the function OBJECT, not the string "enrichGO" -- compareCluster
+        ## resolves a string fun via a name lookup that requires the package to
+        ## be attached (library()'d), which OmniSeq deliberately avoids doing
+        ## to dependencies (requireNamespace only). A function object sidesteps
+        ## that lookup entirely and works regardless of what's attached (this
+        ## was caught failing for fun="enricher" below -- same risk applies
+        ## here even where it happened to work).
+        fun           = clusterProfiler::enrichGO,
+        keyType       = "SYMBOL",
+        OrgDb         = get(org_db_r),
+        ont           = "BP",
+        pAdjustMethod = "BH",
+        pvalueCutoff  = pvalue_cutoff,
+        readable      = FALSE
+      ),
+      error = function(e) { message("[run_omni_ora_updown] GO-BP failed: ", e$message); NULL }
+    )
+    if (is.null(cc) || nrow(as.data.frame(cc)) == 0) {
+      message("[run_omni_ora_updown] GO-BP: no significant terms.")
+      out[["GO-BP"]] <- NULL
+    } else {
+      out[["GO-BP"]] <- cc
+    }
+  }
+
+  if ("Hallmark" %in% databases) {
+    .require_pkg("msigdbr")
+    species_r <- species %||% obj$params$species %||% "Homo sapiens"
+    ## enricher() against Hallmark needs gene SYMBOLS, not Entrez -- using
+    ## Entrez here silently returns zero hits against msigdbr's
+    ## gene_symbol-keyed TERM2GENE (a real bug hit and fixed on a real
+    ## project; gene_clusters are already symbols from `sig$Gene` above, so
+    ## no conversion is done here -- keep it that way).
+    hallmark_t2g <- msigdbr::msigdbr(species = species_r, collection = "H")[, c("gs_name", "gene_symbol")]
+    cc <- tryCatch(
+      clusterProfiler::compareCluster(
+        geneCluster = gene_clusters,
+        fun         = clusterProfiler::enricher,
+        TERM2GENE   = hallmark_t2g,
+        pvalueCutoff = pvalue_cutoff
+      ),
+      error = function(e) { message("[run_omni_ora_updown] Hallmark failed: ", e$message); NULL }
+    )
+    if (is.null(cc) || nrow(as.data.frame(cc)) == 0) {
+      message("[run_omni_ora_updown] Hallmark: no significant terms.")
+      out[["Hallmark"]] <- NULL
+    } else {
+      cc@compareClusterResult$Description <- gsub("^HALLMARK_", "", cc@compareClusterResult$Description)
+      cc@compareClusterResult$Description <- gsub("_", " ", cc@compareClusterResult$Description)
+      out[["Hallmark"]] <- cc
+    }
+  }
+
+  out
+}
+
+
+# =============================================================================
 # 2. GSEA
 # =============================================================================
 
