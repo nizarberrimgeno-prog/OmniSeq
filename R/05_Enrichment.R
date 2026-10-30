@@ -344,7 +344,7 @@ run_omni_gsea <- function(obj,
 
   m_df <- msigdbr::msigdbr(species     = species,
                            collection  = category,
-                           subcategory = subcategory)
+                           subcollection = subcategory)
 
   if (nrow(m_df) == 0)
     stop("No gene sets returned. Check species/category/subcategory.",
@@ -430,7 +430,7 @@ run_omni_ssgsea <- function(obj,
 
   m_df <- msigdbr::msigdbr(species     = species,
                            collection  = category,
-                           subcategory = subcategory)
+                           subcollection = subcategory)
 
   if (nrow(m_df) == 0)
     stop("No gene sets returned.", call. = FALSE)

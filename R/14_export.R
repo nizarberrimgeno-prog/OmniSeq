@@ -727,7 +727,8 @@ export_omniseq <- function(obj,
 #' @param open Logical. Open the report in the browser after rendering.
 #'   Default: `TRUE`.
 #'
-#' @return Invisibly returns the path to the HTML file.
+#' @return Invisibly returns the path to the HTML file, or `NULL` (with a
+#'   warning) if rendering failed; the generated Rmd is kept in `outdir`.
 #' @export
 export_omniseq_report <- function(obj,
                                   outdir      = "./omniseq_output",
@@ -743,6 +744,10 @@ export_omniseq_report <- function(obj,
 
   outdir <- path.expand(outdir)
   dir.create(outdir, recursive = TRUE, showWarnings = FALSE)
+  # The Rmd is knitted from a temp directory and rmarkdown resolves a
+  # relative output_file against the input's folder, so a relative outdir
+  # (including the "./omniseq_output" default) must be made absolute.
+  outdir    <- normalizePath(outdir, winslash = "/", mustWork = TRUE)
   html_path <- file.path(outdir, report_file)
 
   message("\n[export_omniseq_report] Generating HTML report...")
@@ -1743,7 +1748,7 @@ export_omniseq_report <- function(obj,
   render_env$obj      <- obj
   render_env$gene_obj <- gene_obj
 
-  tryCatch({
+  ok <- tryCatch({
     rmarkdown::render(
       input       = rmd_path,
       output_file = html_path,
@@ -1752,13 +1757,14 @@ export_omniseq_report <- function(obj,
     )
     message("[export_omniseq_report] Report saved: ", html_path)
     if (open && interactive()) utils::browseURL(html_path)
+    TRUE
   }, error = function(e) {
-    message("[export_omniseq_report] Rendering FAILED.")
-    message("  Error   : ", e$message)
-    message("  Rmd kept: ", rmd_perm)
-    message("  To debug: rmarkdown::render('", rmd_perm, "')")
-    message("  Or open the Rmd in RStudio and knit manually.")
+    warning("[export_omniseq_report] Rendering failed: ", e$message,
+            "\n  Rmd kept for debugging: ", rmd_perm,
+            "\n  Re-run with rmarkdown::render('", rmd_perm, "')",
+            call. = FALSE)
+    FALSE
   })
 
-  return(invisible(html_path))
+  return(invisible(if (ok) html_path else NULL))
 }

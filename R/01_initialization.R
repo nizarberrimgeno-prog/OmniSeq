@@ -33,6 +33,9 @@
 #' @param exclude_genes Optional character vector of gene/feature identifiers
 #'   to permanently remove from the count matrix **before** any analysis.
 #'   Useful for masking immunoglobulin genes, spike-ins, etc.
+#' @param filter_coding Logical. If `TRUE`, keep only features whose names
+#'   look like standard gene symbols (drops lncRNA/novel IDs that cannot be
+#'   mapped to GO terms). TE locus IDs are always kept. Default: `FALSE`.
 #' @param species Character. Species name passed to `msigdbr` and used to
 #'   select the correct annotation database. Default: `"Homo sapiens"`.
 #' @param org_db Character. Bioconductor annotation package for GO mapping.

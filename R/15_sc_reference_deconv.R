@@ -144,11 +144,17 @@ run_omni_sc_deconv <- function(obj,
                           sample_col = sample_col)
 
   } else if (method == "bisque") {
+    # Explicitly requested: fail loudly instead of the helper's soft skip
+    # (which is meant for the optional run_bisque add-on above).
+    .require_pkg("BisqueRNA")
     obj <- .omni_sc_bisque(obj, sc_ref = sc_ref,
                            cell_type_col = cell_type_col,
                            sample_col = sample_col,
                            group_col = group_col,
                            ref_group = ref_group)
+    if (is.null(obj$sc_deconv$bisque_proportions))
+      stop("BisqueRNA decomposition failed; see the messages above.",
+           call. = FALSE)
   }
 
   return(obj)
@@ -418,12 +424,18 @@ run_omni_sc_deconv <- function(obj,
     assayData = as.matrix(bulk_mat[common_genes, ])
   )
 
+  # Bisque's overlap mode needs the same individuals profiled in bulk and
+  # single-cell; an independent reference (the usual case) needs it off.
+  use_overlap <- any(colnames(bulk_mat) %in% sc_pheno$SubjectName)
+  message("  Bulk/sc sample overlap: ", if (use_overlap) "yes" else "no",
+          " (use.overlap = ", use_overlap, ")")
+
   bisque_res <- tryCatch(
     BisqueRNA::ReferenceBasedDecomposition(
       bulk.eset   = bulk_eset,
       sc.eset     = sc_eset,
       markers     = NULL,
-      use.overlap = TRUE
+      use.overlap = use_overlap
     ),
     error = function(e) {
       message("  BisqueRNA failed: ", e$message); NULL })
@@ -726,11 +738,16 @@ plot_omni_sc_genotype <- function(obj,
     ref_genotype <- unique(
       meta[[genotype_col]][meta[[cond_col]] == ref_lev])[1]
   }
+  # Character throughout: a factor here turns into integer codes when
+  # combined with character levels below, labelling the control group NA.
+  ref_genotype <- as.character(ref_genotype)
+  # Genotype per score column, aligned by sample name rather than row order
+  geno_by_col  <- as.character(meta[colnames(scores), genotype_col])
 
   # Build data frame
   plot_data <- data.frame(
     Sample   = colnames(scores),
-    Genotype = meta[colnames(scores), genotype_col],
+    Genotype = geno_by_col,
     stringsAsFactors = FALSE
   )
   for (ct in cell_types) plot_data[[ct]] <- scores[ct, ]
@@ -761,10 +778,10 @@ plot_omni_sc_genotype <- function(obj,
   signif_df <- do.call(rbind, lapply(seq_along(cell_types), function(i) {
     ct <- cell_types[i]
     ct_label <- ct_labels[i]
-    ctrl_vals <- scores[ct, meta[[genotype_col]] == ref_genotype]
+    ctrl_vals <- scores[ct, geno_by_col == ref_genotype]
 
     do.call(rbind, lapply(setdiff(gt_levels, ref_genotype), function(gt) {
-      gt_vals <- scores[ct, meta[[genotype_col]] == gt]
+      gt_vals <- scores[ct, geno_by_col == gt]
       if (length(gt_vals) < 2) return(NULL)
 
       wt <- tryCatch(stats::wilcox.test(gt_vals, ctrl_vals)$p.value,
@@ -992,7 +1009,9 @@ plot_omni_sc_profile <- function(obj,
 
   print(p)
   message("\n  Mean scores by genotype:")
-  print(round(profile_df, 3))
+  num_cols <- vapply(profile_df, is.numeric, logical(1))
+  profile_df[num_cols] <- lapply(profile_df[num_cols], round, 3)
+  print(profile_df)
   return(invisible(p))
 }
 

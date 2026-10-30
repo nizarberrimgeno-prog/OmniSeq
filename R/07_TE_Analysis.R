@@ -285,17 +285,18 @@ omni_build_te_coords <- function(gtf_files,
     # using min(start) and max(end) — the outer boundaries
     gtf$locus_id_field <- gtf[[locus_id_col]]
 
-    coords <- gtf %>%
-      dplyr::group_by(locus_id_field, seqid) %>%
-      dplyr::summarise(
-        Start  = min(start),
-        End    = max(end),
-        Strand = as.character(dplyr::first(strand)),
-        .groups = "drop"
-      ) %>%
-      dplyr::rename(Locus_ID = locus_id_field,
-                    Chr      = seqid) %>%
-      as.data.frame()
+    # No pipe: OmniSeq does not import %>%, so it is only available when
+    # the caller happens to have dplyr/magrittr attached.
+    coords <- dplyr::summarise(
+      dplyr::group_by(gtf, locus_id_field, seqid),
+      Start  = min(start),
+      End    = max(end),
+      Strand = as.character(dplyr::first(strand)),
+      .groups = "drop"
+    )
+    coords <- as.data.frame(dplyr::rename(coords,
+                                          Locus_ID = locus_id_field,
+                                          Chr      = seqid))
 
     message("[omni_build_te_coords]   ",
             nrow(coords), " unique loci.")

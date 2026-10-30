@@ -33,7 +33,8 @@ Default: \code{"./omniseq_output"}.}
 Default: \code{TRUE}.}
 }
 \value{
-Invisibly returns the path to the HTML file.
+Invisibly returns the path to the HTML file, or \code{NULL} (with a
+warning) if rendering failed; the generated Rmd is kept in \code{outdir}.
 }
 \description{
 Renders a self-contained HTML report summarising all completed analyses.

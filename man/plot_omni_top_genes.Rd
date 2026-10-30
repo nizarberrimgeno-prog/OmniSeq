@@ -20,6 +20,9 @@ plot_omni_top_genes(
 
 \item{pval_thresh}{Adjusted p-value threshold. Default: \code{0.05}.}
 
+\item{lfc_thresh}{Absolute log2 fold-change threshold applied together
+with \code{pval_thresh} when selecting genes. Default: \code{0} (padj only).}
+
 \item{color_by}{Character. Metadata column for point color. If \code{NULL}
 (default), auto-detected from the active contrast name.}
 

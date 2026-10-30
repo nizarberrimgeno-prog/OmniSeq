@@ -42,7 +42,7 @@ Suggests:
     enrichplot           (>= 1.18.0),
     org.Hs.eg.db,
     org.Mm.eg.db,
-    msigdbr              (>= 7.5.0),
+    msigdbr              (>= 10.0.0),
     GSVA                 (>= 1.46.0),
     pheatmap             (>= 1.0.12),
     patchwork            (>= 1.1.0),
@@ -74,7 +74,12 @@ Suggests:
     crosstalk            (>= 1.2.0),
     htmltools            (>= 0.5.5),
     testthat             (>= 3.0.0),
-    withr
+    withr,
+    tidyr,
+    Biobase,
+    BisqueRNA,
+    BiocManager,
+    remotes
 Config/testthat/edition: 3
 URL: https://github.com/nizarberrimgeno-prog/OmniSeq
 BugReports: https://github.com/nizarberrimgeno-prog/OmniSeq/issues

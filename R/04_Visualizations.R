@@ -330,6 +330,8 @@ plot_omni_ma <- function(obj,
 #' @param obj A validated OmniSeq object with DE results.
 #' @param ntop Integer. Number of top significant genes to plot. Default: `50`.
 #' @param pval_thresh Adjusted p-value threshold. Default: `0.05`.
+#' @param lfc_thresh Absolute log2 fold-change threshold applied together
+#'   with `pval_thresh` when selecting genes. Default: `0` (padj only).
 #' @param color_up Color for high expression. Default: `"#B2182B"`.
 #' @param color_down Color for low expression. Default: `"#2166AC"`.
 #' @param cluster_rows Logical. Cluster genes. Default: `TRUE`.
@@ -711,6 +713,8 @@ plot_omni_pvalue_hist <- function(obj, bins = 40) {
 #' @param obj A validated OmniSeq object with DE results.
 #' @param n Integer. Number of top genes to plot. Default: `12`.
 #' @param pval_thresh Adjusted p-value threshold. Default: `0.05`.
+#' @param lfc_thresh Absolute log2 fold-change threshold applied together
+#'   with `pval_thresh` when selecting genes. Default: `0` (padj only).
 #' @param color_by Character. Metadata column for point color. If `NULL`
 #'   (default), auto-detected from the active contrast name.
 #' @param shape_by Optional metadata column for point shape.

@@ -671,7 +671,7 @@ plot_omni_tf_network <- function(obj,
       ggplot2::scale_size_manual(
         values = c("TF" = 6, "Gene" = 3), name = "Node type"
       ) +
-      ggraph::theme_graph(base_size = 12) +
+      ggraph::theme_graph(base_size = 12, base_family = "sans") +
       ggplot2::labs(
         title   = paste("TF Regulatory Network —", obj$active_contrast),
         subtitle = paste0("Top ", n_tfs, " TFs | ", nrow(edges),
@@ -812,6 +812,10 @@ plot_omni_tf_genotype <- function(obj,
 
   if (is.null(geno_contrasts) || length(geno_contrasts) < 2)
     stop("Need >= 2 genotype vs control contrasts.", call. = FALSE)
+  if (is.null(names(geno_contrasts)) || any(!nzchar(names(geno_contrasts))))
+    stop("geno_contrasts must be named (genotype label = contrast name), ",
+         "e.g. list(KO = \"KO vs Ctrl\", Het = \"Het vs Ctrl\").",
+         call. = FALSE)
 
   gt_labels <- names(geno_contrasts)
   message("[plot_omni_tf_genotype] Genotypes: ",
@@ -847,7 +851,7 @@ plot_omni_tf_genotype <- function(obj,
 
   if (use_msigdb && requireNamespace("msigdbr", quietly = TRUE)) {
     tryCatch({
-      ms <- msigdbr::msigdbr(species = "Homo sapiens", category = "H")
+      ms <- msigdbr::msigdbr(species = "Homo sapiens", collection = "H")
       ifn_universe <- unique(c(
         ms$gene_symbol[ms$gs_name == "HALLMARK_INTERFERON_ALPHA_RESPONSE"],
         ms$gene_symbol[ms$gs_name == "HALLMARK_INTERFERON_GAMMA_RESPONSE"]
@@ -1525,6 +1529,7 @@ plot_omni_deconv_heatmap <- function(obj,
     )
 
     rn      <- rownames(deconv)
+    used    <- character(0)
     agg_mat <- matrix(NA_real_,
                       nrow     = length(main_type_map),
                       ncol     = ncol(deconv),
@@ -1535,14 +1540,22 @@ plot_omni_deconv_heatmap <- function(obj,
       patterns <- main_type_map[[main_nm]]
       pat      <- paste(patterns, collapse = "|")
       matched  <- rn[grepl(pat, rn, ignore.case = TRUE)]
-      if (length(matched) > 0)
+      if (length(matched) > 0) {
         agg_mat[main_nm, ] <- colMeans(
           deconv[matched, , drop = FALSE], na.rm = TRUE)
+        used <- union(used, matched)
+      }
     }
     keep_rows  <- rowSums(!is.na(agg_mat)) > 0
-    deconv_use <- agg_mat[keep_rows, , drop = FALSE]
+    # Cell types outside the immune map (e.g. a tissue reference used with
+    # MuSiC) are kept as they are rather than dropped.
+    unmatched  <- setdiff(rn, used)
+    deconv_use <- rbind(agg_mat[keep_rows, , drop = FALSE],
+                        as.matrix(deconv[unmatched, , drop = FALSE]))
     subtitle   <- paste0("Aggregated to ", sum(keep_rows),
-                         " main cell types")
+                         " main cell types",
+                         if (length(unmatched) > 0)
+                           paste0(" + ", length(unmatched), " unmapped"))
   } else {
     deconv_use <- deconv
     subtitle   <- paste0(nrow(deconv), " cell types")
@@ -1571,12 +1584,15 @@ plot_omni_deconv_heatmap <- function(obj,
                        function(x) any(!is.na(x) & x > 0))
   deconv_plot <- deconv_plot[keep_rows, , drop = FALSE]
 
+  if (nrow(deconv_plot) == 0)
+    stop("No non-zero cell type fractions to plot.", call. = FALSE)
+
   p <- pheatmap::pheatmap(
     deconv_plot,
     annotation_col = df_annot,
     color          = pal,
-    cluster_rows   = cluster_rows,
-    cluster_cols   = cluster_cols,
+    cluster_rows   = cluster_rows && nrow(deconv_plot) >= 2,
+    cluster_cols   = cluster_cols && ncol(deconv_plot) >= 2,
     border_color   = NA,
     show_colnames  = TRUE,
     fontsize_row   = 10,
@@ -1808,6 +1824,13 @@ run_omni_string <- function(obj,
   mapped$log2FoldChange <- lfc_map[mapped$Gene]
   mapped$padj           <- sig_df$padj[match(mapped$Gene, sig_df$Gene)]
 
+  # STRINGdb can map one symbol to several STRING proteins (e.g. CT45A
+  # paralogs). Every protein ID was used above to collect edges; keep one
+  # node per gene and one edge per gene pair (highest score) so the
+  # gene-level graph has unique vertex names.
+  mapped       <- mapped[!duplicated(mapped$Gene), ]
+  interactions <- .omni_collapse_gene_edges(interactions)
+
   obj$string_network <- list(
     nodes         = mapped,
     interactions  = interactions,
@@ -1886,6 +1909,11 @@ plot_omni_string_network <- function(obj,
   if (nrow(interactions) == 0)
     stop("No valid interactions to plot after filtering.", call. = FALSE)
 
+  # Objects created before run_omni_string() collapsed multi-mapped genes
+  # can still hold duplicate gene nodes/edges.
+  nodes        <- nodes[!duplicated(nodes$Gene), ]
+  interactions <- .omni_collapse_gene_edges(interactions)
+
   g <- igraph::graph_from_data_frame(
     d        = interactions[, c("from_gene", "to_gene", "combined_score")],
     directed = FALSE,
@@ -1945,7 +1973,7 @@ plot_omni_string_network <- function(obj,
       ggraph::scale_edge_width_continuous(
         name = "STRING score", range = c(0.3, 1.5)
       ) +
-      ggraph::theme_graph(base_size = 12) +
+      ggraph::theme_graph(base_size = 12, base_family = "sans") +
       ggplot2::labs(
         title    = "STRING Protein Interaction Network",
         subtitle = paste0(
@@ -2073,4 +2101,17 @@ plot_omni_string_network <- function(obj,
   regs <- regs[!is.na(regs$source) & !is.na(regs$target), ]
 
   return(regs)
+}
+
+
+#' Collapse STRING edges to one per unordered gene pair (max combined_score)
+#' @keywords internal
+.omni_collapse_gene_edges <- function(interactions) {
+  if (nrow(interactions) == 0) return(interactions)
+  a   <- pmin(interactions$from_gene, interactions$to_gene)
+  b   <- pmax(interactions$from_gene, interactions$to_gene)
+  ord <- order(-interactions$combined_score)
+  interactions <- interactions[ord, ]
+  key <- paste(a[ord], b[ord], sep = "___")
+  interactions[!duplicated(key), ]
 }

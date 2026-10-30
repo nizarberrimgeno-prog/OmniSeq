@@ -331,7 +331,7 @@ summary.OmniSeq <- function(object, ...) {
 .require_pkg <- function(pkg) {
   if (!requireNamespace(pkg, quietly = TRUE))
     stop("Package '", pkg, "' is required but not installed. ",
-         "Install it with: BiocManager::install('", pkg, "')",
+         "Install it with: ", .omni_install_hint(pkg),
          call. = FALSE)
 }
 

@@ -51,6 +51,23 @@
   df
 }
 
+#' Add one scatter trace per category level, each with its own marker colour
+#' @keywords internal
+.omni_add_category_traces <- function(p, d, col, levels, cols, x, y,
+                                      hover_txt, size, opacity) {
+  for (lv in levels) {
+    dd <- d[as.character(d[[col]]) == lv, , drop = FALSE]
+    if (nrow(dd) == 0) next
+    p <- plotly::add_trace(p, data = dd, x = x, y = y,
+                           type = "scatter", mode = "markers",
+                           marker = list(color = unname(cols[lv]), size = size,
+                                         opacity = opacity),
+                           text = hover_txt(dd), hoverinfo = "text",
+                           name = paste0(lv, " (n=", nrow(dd), ")"))
+  }
+  p
+}
+
 #' @keywords internal
 .omni_require_interactive_pkgs <- function() {
   .require_pkg("plotly")
@@ -128,16 +145,18 @@ plot_omni_volcano_interactive <- function(obj,
   title <- title %||% paste0(key, "  (padj<", pval_thresh, " & |log2FC|>", lfc_thresh,
                               "; ", n_up, " Up / ", n_down, " Down)")
 
-  plotly::plot_ly(width = width, height = height) |>
+  p <- plotly::plot_ly(width = width, height = height) |>
     plotly::add_trace(data = d_bg, x = ~log2FoldChange, y = ~neglog10padj,
                        type = "scatter", mode = "markers",
                        marker = list(color = cols["Not significant"], size = 4, opacity = 0.35),
-                       text = hover_txt(d_bg), hoverinfo = "text", name = "Not significant") |>
-    plotly::add_trace(data = d_fg, x = ~log2FoldChange, y = ~neglog10padj,
-                       type = "scatter", mode = "markers", color = ~Direction,
-                       colors = cols[unique(d_fg$Direction)],
-                       marker = list(size = 6, opacity = 0.75),
-                       text = hover_txt(d_fg), hoverinfo = "text") |>
+                       text = hover_txt(d_bg), hoverinfo = "text", name = "Not significant")
+  # One trace per direction with an explicit marker colour: `colors =` is a
+  # plot_ly() argument and is ignored by add_trace(), which left plotly's
+  # default palette in place of the Up/Down colours.
+  p <- .omni_add_category_traces(p, d_fg, "Direction", c("Up", "Down"), cols,
+                                 x = ~log2FoldChange, y = ~neglog10padj,
+                                 hover_txt = hover_txt, size = 6, opacity = 0.75)
+  p |>
     plotly::layout(
       title  = title,
       xaxis  = list(title = "log2 Fold Change"),
@@ -225,16 +244,15 @@ plot_omni_lfc_scatter_interactive <- function(obj,
   title <- title %||% paste0(label_a, " vs ", label_b,
                               "  (padj<", pval_thresh, " & |log2FC|>", lfc_thresh, ")")
 
-  plotly::plot_ly(width = width, height = height) |>
+  p <- plotly::plot_ly(width = width, height = height) |>
     plotly::add_trace(data = d_bg, x = ~log2FoldChange_A, y = ~log2FoldChange_B,
                        type = "scatter", mode = "markers",
                        marker = list(color = cols["Not significant"], size = 4, opacity = 0.25),
-                       text = hover_txt(d_bg), hoverinfo = "text", name = "Not significant") |>
-    plotly::add_trace(data = d_fg, x = ~log2FoldChange_A, y = ~log2FoldChange_B,
-                       type = "scatter", mode = "markers", color = ~Category,
-                       colors = cols[levels(droplevels(d_fg$Category))],
-                       marker = list(size = 6, opacity = 0.75),
-                       text = hover_txt(d_fg), hoverinfo = "text") |>
+                       text = hover_txt(d_bg), hoverinfo = "text", name = "Not significant")
+  p <- .omni_add_category_traces(p, d_fg, "Category", setdiff(cat_levels, "Not significant"),
+                                 cols, x = ~log2FoldChange_A, y = ~log2FoldChange_B,
+                                 hover_txt = hover_txt, size = 6, opacity = 0.75)
+  p |>
     plotly::layout(title = title,
                     xaxis = list(title = paste0("log2FC, ", label_a)),
                     yaxis = list(title = paste0("log2FC, ", label_b)),

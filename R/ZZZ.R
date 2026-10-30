@@ -60,7 +60,7 @@ omni_install_deps <- function(modules    = "all",
 
     core = list(
       cran  = c("pheatmap", "ggpubr", "patchwork", "stringr",
-                "scales", "dplyr", "ggrepel"),
+                "scales", "dplyr", "ggrepel", "tidyr"),
       bioc  = c("DESeq2", "SummarizedExperiment", "limma",
                 "apeglm", "ashr"),
       github = character(0)
@@ -75,14 +75,16 @@ omni_install_deps <- function(modules    = "all",
 
     network = list(
       cran  = c("igraph", "ggraph", "visNetwork", "WGCNA"),
-      bioc  = c("STRINGdb"),
+      bioc  = c("STRINGdb", "OmnipathR"),
       github = character(0)
     ),
 
     multiomics = list(
       cran  = c("mediation"),
-      bioc  = c("mixOmics", "decoupleR", "immunedeconv"),
-      github = c("dviraran/xCell")
+      bioc  = c("mixOmics", "decoupleR", "Biobase", "SingleCellExperiment"),
+      # Not on CRAN/Bioconductor (BisqueRNA was archived from CRAN)
+      github = c("dviraran/xCell", "omnideconv/immunedeconv",
+                 "xuranw/MuSiC", "cozygene/bisque")
     ),
 
     te = list(
@@ -92,7 +94,8 @@ omni_install_deps <- function(modules    = "all",
     ),
 
     export = list(
-      cran  = c("rmarkdown", "knitr"),
+      cran  = c("rmarkdown", "knitr", "plotly", "crosstalk", "htmltools",
+                "DT", "shiny", "bslib"),
       bioc  = character(0),
       github = character(0)
     )
@@ -114,7 +117,10 @@ omni_install_deps <- function(modules    = "all",
   status_rows <- list()
 
   .install_pkg <- function(pkg, source) {
-    is_installed <- requireNamespace(pkg, quietly = TRUE)
+    # GitHub entries are "owner/repo"; the installed package name differs
+    # for some repos (cozygene/bisque installs BisqueRNA).
+    pkg_name     <- .omni_github_pkg_name(pkg)
+    is_installed <- requireNamespace(pkg_name, quietly = TRUE)
     if (is_installed) {
       message("  [skip]    ", pkg, " (already installed)")
       return(data.frame(Package = pkg, Source = source,
@@ -214,10 +220,14 @@ omni_check_deps <- function() {
     "Network & TF"             = c("igraph", "ggraph", "visNetwork",
                                    "WGCNA", "STRINGdb", "decoupleR"),
     "Multi-omics"              = c("mixOmics", "immunedeconv", "xCell",
+                                   "MuSiC", "BisqueRNA", "Biobase",
+                                   "SingleCellExperiment",
                                    "mediation", "apeglm", "ashr"),
     "TE Analysis"              = c("rtracklayer", "GenomicRanges",
                                    "IRanges", "rGREAT"),
-    "Export & Report"          = c("rmarkdown", "knitr")
+    "Export & Report"          = c("rmarkdown", "knitr", "plotly",
+                                   "crosstalk", "htmltools"),
+    "Shiny app"                = c("shiny", "bslib", "DT")
   )
 
   cat("\n OmniSeq Dependency Status\n")
@@ -253,4 +263,24 @@ omni_check_deps <- function() {
   cat("\n")
 
   return(invisible(result))
+}
+
+
+# Installed package name for an omni_install_deps() GitHub entry
+#' @keywords internal
+.omni_github_pkg_name <- function(repo) {
+  known <- c("cozygene/bisque" = "BisqueRNA")
+  if (repo %in% names(known)) unname(known[repo]) else basename(repo)
+}
+
+# Install hint for .require_pkg(): packages that are not on CRAN or
+# Bioconductor need their GitHub source, not BiocManager::install().
+#' @keywords internal
+.omni_install_hint <- function(pkg) {
+  github <- c(MuSiC = "xuranw/MuSiC", immunedeconv = "omnideconv/immunedeconv",
+              xCell = "dviraran/xCell", BisqueRNA = "cozygene/bisque")
+  if (pkg %in% names(github))
+    paste0("remotes::install_github('", github[[pkg]], "')")
+  else
+    paste0("BiocManager::install('", pkg, "')")
 }

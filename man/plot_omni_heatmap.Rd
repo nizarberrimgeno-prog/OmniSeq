@@ -25,6 +25,9 @@ plot_omni_heatmap(
 
 \item{pval_thresh}{Adjusted p-value threshold. Default: \code{0.05}.}
 
+\item{lfc_thresh}{Absolute log2 fold-change threshold applied together
+with \code{pval_thresh} when selecting genes. Default: \code{0} (padj only).}
+
 \item{color_up}{Color for high expression. Default: \code{"#B2182B"}.}
 
 \item{color_down}{Color for low expression. Default: \code{"#2166AC"}.}

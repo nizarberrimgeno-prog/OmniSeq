@@ -14,6 +14,72 @@
   `OmniSeq::omni_launch_app()` without `library(OmniSeq)` no longer fails.
 * New `omni_set_contrast()` switches the active contrast without
   recomputing anything.
+* App support for the new reporting functions: interactive volcano
+  (`plot_omni_volcano_interactive()`), searchable results table
+  (`omni_gene_search_table()`), an "ORA Up/Down" panel
+  (`run_omni_ora_updown()`, `plot_omni_enrichment_interactive()`,
+  `plot_omni_enrichment_comparison()`), and a "Compare contrasts" tab
+  (`plot_omni_lfc_scatter_interactive()`, `plot_omni_interaction_scatter()`,
+  `plot_omni_interaction_scatter_static()`, `plot_omni_interaction_dumbbell()`).
+  The heatmap and top-features plots now honour the app's |log2FC| threshold.
+* Sensor scoring in the app accepts custom TE family lists, and lists the
+  most abundant families in the paired TE data, for annotations whose family
+  names differ from RepeatMasker's (e.g. Telescope's `HML2` for HERVK).
+* The app still starts when plotly is not installed; interactive panels
+  then show which package to install.
+
+## Bug fixes (found by running every exported function on public data)
+
+See `dev/real-data-tests/` for the scripts, datasets and results.
+
+* `omni_build_te_coords()` failed with `could not find function "%>%"`
+  unless dplyr/magrittr was attached; it no longer uses the pipe.
+* `export_omniseq_report()` failed to render whenever `outdir` was a
+  relative path (including the `"./omniseq_output"` default) and still
+  returned the HTML path. The path is now made absolute, and a render
+  failure gives a warning and returns `NULL`.
+* `run_omni_string()` / `plot_omni_string_network()`: genes that STRING maps
+  to several proteins (e.g. CT45A paralogs) produced duplicate vertices and
+  a "Duplicate vertex names" error. Nodes are now one per gene and edges one
+  per gene pair; objects saved before the fix also plot.
+* `plot_omni_string_network()`, `plot_omni_tf_network()` and
+  `plot_omni_wgcna_hub_network()` errored on PDF devices ("invalid font
+  type") because `ggraph::theme_graph()` defaults to Arial Narrow; they now
+  use the standard sans family.
+* `run_omni_sensor_score()` now keeps every metadata column in the score
+  table. `plot_omni_sensor_irgs_corr()` previously failed when the grouping
+  column was not one of a fixed set of names, and its regression line is
+  now a single fit per panel (matching the reported R and p) instead of one
+  per point shape.
+* `plot_omni_sc_profile()` always errored after drawing (it rounded a data
+  frame containing the genotype labels).
+* `plot_omni_sc_genotype()` / `plot_omni_sc_two_layer()` labelled the
+  reference group `NA` when the genotype column was a factor, and matched
+  Wilcoxon groups by metadata row order rather than by sample name.
+* `run_omni_sc_deconv(method = "bisque")` always used BisqueRNA's
+  same-individuals mode, which fails with an independent reference, and
+  then returned the object unchanged. Overlap mode is now used only when
+  bulk and reference samples overlap, and an explicit `"bisque"` run that
+  produces nothing is an error.
+* `plot_omni_deconv_heatmap()` (default `aggregate_main = TRUE`) dropped every
+  cell type outside its immune map, so a tissue reference (e.g. islet
+  alpha/beta cells via MuSiC) left too few rows and pheatmap failed to
+  cluster. Unmapped cell types are now kept as they are.
+* `plot_omni_volcano_interactive()` and `plot_omni_lfc_scatter_interactive()`
+  ignored their colour schemes (plotly default palette); points now use the
+  documented Up/Down and category colours.
+* msigdbr calls use the current `collection` / `subcollection` arguments
+  throughout (the minimum version is now msigdbr 10.0.0, which the existing
+  `collection =` calls already required).
+* `plot_omni_tf_genotype()` explains that `geno_contrasts` must be a named
+  list instead of failing with "Could not extract per-genotype TF scores".
+* Missing-package errors for MuSiC, immunedeconv, xCell and BisqueRNA now
+  give their GitHub install command instead of `BiocManager::install()`.
+  `omni_install_deps()` installs immunedeconv, MuSiC and BisqueRNA from
+  GitHub, adds the interactive/app packages, and no longer reinstalls
+  GitHub packages on every run.
+* Packages used via `::` but missing from DESCRIPTION (tidyr, Biobase,
+  BisqueRNA, BiocManager, remotes) are now listed in Suggests.
 
 # OmniSeq 0.1.0
 

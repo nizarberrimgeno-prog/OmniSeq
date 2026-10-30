@@ -1047,7 +1047,7 @@ plot_omni_wgcna_hub_network <- function(obj,
       ggraph::scale_edge_width_continuous(
         range = c(0.3, 1.5), name = "|r|", guide = "none"
       ) +
-      ggraph::theme_graph(base_size = 12) +
+      ggraph::theme_graph(base_size = 12, base_family = "sans") +
       ggplot2::labs(
         title    = paste0("WGCNA Hub Gene Network — ", key),
         subtitle = paste(length(modules), "modules |",

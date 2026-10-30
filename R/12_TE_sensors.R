@@ -211,9 +211,8 @@ run_omni_sensor_score <- function(gene_obj,
   if (group_col %in% colnames(meta))
     score_df$Group <- as.character(meta[common_samps, group_col])
 
-  for (extra_col in c("Genotype", "Phenotype", "Condition", "Batch", "Sex")) {
-    if (extra_col %in% colnames(meta))
-      score_df[[extra_col]] <- as.character(meta[common_samps, extra_col])
+  for (extra_col in setdiff(colnames(meta), colnames(score_df))) {
+    score_df[[extra_col]] <- as.character(meta[common_samps, extra_col])
   }
 
   # ------------------------------------------------------------------
@@ -444,7 +443,9 @@ plot_omni_sensor_irgs_corr <- function(obj,
 
   # Build color and shape columns
   color_var <- if (color_col %in% colnames(score_df)) color_col else
-    obj$sensor_scores$group_col %||% "Group"
+    if ("Group" %in% colnames(score_df)) "Group" else
+      stop("color_col '", color_col, "' not found in sensor scores.",
+           call. = FALSE)
   shape_var <- if (!is.null(shape_col) && shape_col %in% colnames(score_df))
     shape_col else NULL
 
@@ -495,8 +496,11 @@ plot_omni_sensor_irgs_corr <- function(obj,
   p <- ggplot2::ggplot(long_df, aes_args) +
     ggplot2::geom_point(size = 4, alpha = 0.85)
 
+  # group = 1: one fit per panel (matching the R/p annotation), not one per
+  # colour/shape group inherited from the point aesthetics.
   if (add_fit)
-    p <- p + ggplot2::geom_smooth(method = "lm", color = "black",
+    p <- p + ggplot2::geom_smooth(ggplot2::aes(group = 1),
+                                  method = "lm", color = "black",
                                   linetype = "dashed", fill = "grey80",
                                   formula = y ~ x, linewidth = 0.8,
                                   se = TRUE)

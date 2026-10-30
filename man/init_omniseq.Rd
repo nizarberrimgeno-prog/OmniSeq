@@ -37,6 +37,10 @@ prompted if this is \code{NULL}.}
 to permanently remove from the count matrix \strong{before} any analysis.
 Useful for masking immunoglobulin genes, spike-ins, etc.}
 
+\item{filter_coding}{Logical. If \code{TRUE}, keep only features whose names
+look like standard gene symbols (drops lncRNA/novel IDs that cannot be
+mapped to GO terms). TE locus IDs are always kept. Default: \code{FALSE}.}
+
 \item{species}{Character. Species name passed to \code{msigdbr} and used to
 select the correct annotation database. Default: \code{"Homo sapiens"}.}
 
