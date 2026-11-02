@@ -27,6 +27,15 @@
   names differ from RepeatMasker's (e.g. Telescope's `HML2` for HERVK).
 * The app still starts when plotly is not installed; interactive panels
   then show which package to install.
+* Plots in the app are interactive (hover, zoom, pan): ggplot results are
+  converted with plotly (gene/term labels kept), pheatmap heatmaps are
+  redrawn as plotly heatmaps in the same clustered order, multi-panel
+  figures become linked subplots, and the STRING, TF and WGCNA hub
+  networks use the package's visNetwork mode. The Volcano tab shows the
+  interactive volcano (the PNG download keeps the labelled static plot),
+  and the ORA dot plot uses `plot_omni_enrichment_interactive()`. 41 of the
+  app's 46 plots are interactive; ORA cnet/emap, the WGCNA dendrogram and
+  module-trait heatmap (base graphics) and the TE class pie stay images.
 
 ## Bug fixes (found by running every exported function on public data)
 
@@ -65,6 +74,9 @@ See `dev/real-data-tests/` for the scripts, datasets and results.
   cell type outside its immune map, so a tissue reference (e.g. islet
   alpha/beta cells via MuSiC) left too few rows and pheatmap failed to
   cluster. Unmapped cell types are now kept as they are.
+* The interactive plots drew non-significant points in plotly's default
+  blue: R colour names such as `grey75` are not valid plotly colours. They
+  now use hex codes.
 * `plot_omni_volcano_interactive()` and `plot_omni_lfc_scatter_interactive()`
   ignored their colour schemes (plotly default palette); points now use the
   documented Up/Down and category colours.
