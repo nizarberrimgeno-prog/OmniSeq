@@ -45,13 +45,13 @@ mod_compare_ui <- function(id) {
       ),
       bslib::nav_panel(
         "Interaction scatter (static)",
-        shiny::plotOutput(ns("inter_static"), height = "620px"),
+        plot_slot(ns("inter_static"), height = "620px"),
         shiny::downloadButton(ns("dl_static"), "PNG", class = "btn-sm")
       ),
       bslib::nav_panel(
         "Interaction dumbbell",
         shiny::uiOutput(ns("gap_warning")),
-        shiny::plotOutput(ns("dumbbell"), height = "700px"),
+        plot_slot(ns("dumbbell"), height = "700px"),
         shiny::downloadButton(ns("dl_dumbbell"), "PNG", class = "btn-sm")
       )
     )
@@ -134,8 +134,8 @@ mod_compare_server <- function(id, state) {
         n_top = input$n_top)
     }
 
-    output$inter_static <- shiny::renderPlot(safe_plot(static_fn()))
-    output$dumbbell     <- shiny::renderPlot(safe_plot(dumbbell_fn()))
+    output$inter_static <- render_smart(safe_plot(static_fn()))
+    output$dumbbell     <- render_smart(safe_plot(dumbbell_fn()))
 
     # The package documents that ranking by gap on a null interaction picks
     # noise by construction; surface that next to the plot.

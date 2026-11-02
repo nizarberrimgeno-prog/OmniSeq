@@ -33,11 +33,11 @@ mod_multivariate_ui <- function(id) {
         ),
         bslib::navset_underline(
           bslib::nav_panel("Dendrogram",
-                           shiny::plotOutput(ns("w_dendro"), height = "600px")),
+                           plot_slot(ns("w_dendro"), height = "600px")),
           bslib::nav_panel("Module-trait",
-                           shiny::plotOutput(ns("w_trait"), height = "650px")),
+                           plot_slot(ns("w_trait"), height = "650px")),
           bslib::nav_panel("Hub network",
-                           shiny::plotOutput(ns("w_hub"), height = "700px")),
+                           plot_slot(ns("w_hub"), height = "700px")),
           bslib::nav_panel("Module membership",
                            DT::DTOutput(ns("w_table")),
                            shiny::downloadButton(ns("dl_w"), "Download CSV",
@@ -68,7 +68,7 @@ mod_multivariate_ui <- function(id) {
           shiny::helpText("Zsummary > 10 = strongly preserved;",
                           "< 2 = condition-specific.")
         ),
-        shiny::plotOutput(ns("mp_plot"), height = "600px")
+        plot_slot(ns("mp_plot"), height = "600px")
       )
     ),
 
@@ -96,13 +96,13 @@ mod_multivariate_ui <- function(id) {
         ),
         bslib::navset_underline(
           bslib::nav_panel("Scores",
-                           shiny::plotOutput(ns("s_scores"), height = "600px")),
+                           plot_slot(ns("s_scores"), height = "600px")),
           bslib::nav_panel("Loadings",
-                           shiny::plotOutput(ns("s_load"), height = "600px")),
+                           plot_slot(ns("s_load"), height = "600px")),
           bslib::nav_panel("VIP",
-                           shiny::plotOutput(ns("s_vip"), height = "600px")),
+                           plot_slot(ns("s_vip"), height = "600px")),
           bslib::nav_panel("ROC",
-                           shiny::plotOutput(ns("s_roc"), height = "600px")),
+                           plot_slot(ns("s_roc"), height = "600px")),
           bslib::nav_panel("Signature", DT::DTOutput(ns("s_sig")),
                            shiny::downloadButton(ns("dl_sig"), "Download CSV",
                                                  class = "btn-sm"))
@@ -174,7 +174,7 @@ mod_multivariate_server <- function(id, state) {
       obj
     })
 
-    output$w_dendro <- shiny::renderPlot(safe_plot(
+    output$w_dendro <- render_smart(safe_plot(
       plot_omni_wgcna_dendrogram(w_obj(), key = input$w_show)))
     # Selected metadata columns -> numeric trait table (factors as level
     # codes). NULL lets the package build its default trait set.
@@ -189,13 +189,13 @@ mod_multivariate_server <- function(id, state) {
       meta
     })
 
-    output$w_trait <- shiny::renderPlot(safe_plot(
+    output$w_trait <- render_smart(safe_plot(
       plot_omni_wgcna_trait_heatmap(w_obj(), key = input$w_show,
                                     traits = w_traits())))
-    output$w_hub <- shiny::renderPlot(safe_plot(
+    output$w_hub <- render_smart(safe_plot(
       plot_omni_wgcna_hub_network(w_obj(), key = input$w_show,
                                   n_hubs = input$w_hubs,
-                                  plot_type = "static")))
+                                  plot_type = network_type())))
 
     w_members <- shiny::reactive({
       entry <- w_obj()$wgcna[[input$w_show]]
@@ -231,7 +231,7 @@ mod_multivariate_server <- function(id, state) {
       if (!is.null(out)) state$obj <- out
     })
 
-    output$mp_plot <- shiny::renderPlot({
+    output$mp_plot <- render_smart({
       obj <- need_obj(state)
       shiny::validate(shiny::need(
         !is.null(obj$wgcna_multi[[input$mp_col]]$preservation),
@@ -266,15 +266,15 @@ mod_multivariate_server <- function(id, state) {
     })
     s_comp <- shiny::reactive(as.integer(input$s_comp %||% 1))
 
-    output$s_scores <- shiny::renderPlot(safe_plot(
+    output$s_scores <- render_smart(safe_plot(
       plot_omni_splsda_scores(s_obj(), key = input$s_key)))
-    output$s_load <- shiny::renderPlot(safe_plot(
+    output$s_load <- render_smart(safe_plot(
       plot_omni_splsda_loadings(s_obj(), key = input$s_key, comp = s_comp(),
                                 n_features = input$s_nfeat)))
-    output$s_vip <- shiny::renderPlot(safe_plot(
+    output$s_vip <- render_smart(safe_plot(
       plot_omni_splsda_vip(s_obj(), key = input$s_key, comp = s_comp(),
                            n_features = input$s_nfeat)))
-    output$s_roc <- shiny::renderPlot(safe_plot(
+    output$s_roc <- render_smart(safe_plot(
       plot_omni_splsda_roc(s_obj(), key = input$s_key, comp = s_comp())))
 
     s_sig <- shiny::reactive(

@@ -133,7 +133,7 @@ plot_omni_volcano_interactive <- function(obj,
   n_down <- sum(df$Direction == "Down")
 
   df$neglog10padj <- -log10(pmax(df$padj, 1e-300))
-  cols <- c("Up" = "#E74C3C", "Down" = "#2980B9", "Not significant" = "grey75")
+  cols <- c("Up" = "#E74C3C", "Down" = "#2980B9", "Not significant" = "#BFBFBF")  # grey75; plotly needs CSS colours
 
   d_bg <- .omni_downsample_bg(df[df$Direction == "Not significant", ], max_bg_points)
   d_fg <- df[df$Direction != "Not significant", ]
@@ -232,7 +232,7 @@ plot_omni_lfc_scatter_interactive <- function(obj,
                  ifelse(sig_b, paste0(label_b, "-specific"), "Not significant")))
   cat_levels <- c("Shared", paste0(label_a, "-specific"), paste0(label_b, "-specific"), "Not significant")
   d$Category <- factor(d$Category, levels = cat_levels)
-  cols <- stats::setNames(c("#8172B2", "#4C72B0", "#DD8452", "grey80"), cat_levels)
+  cols <- stats::setNames(c("#8172B2", "#4C72B0", "#DD8452", "#CCCCCC"), cat_levels)  # grey80
 
   d_bg <- .omni_downsample_bg(d[d$Category == "Not significant", ], max_bg_points)
   d_fg <- d[d$Category != "Not significant", ]
@@ -345,7 +345,7 @@ plot_omni_interaction_scatter <- function(obj,
 
   d$Interaction_sig <- ifelse(flipped, "Significant (reversed direction)",
                         ifelse(sig, "Significant", "Not significant"))
-  cols <- stats::setNames(c("grey80", "#C44E52", "#8172B2"),
+  cols <- stats::setNames(c("#CCCCCC", "#C44E52", "#8172B2"),
                            c("Not significant", "Significant", "Significant (reversed direction)"))
 
   d_bg <- d[d$Interaction_sig == "Not significant", ]

@@ -49,7 +49,7 @@ mod_enrichment_ui <- function(id) {
                                "Enrichment map" = "emap")),
           shiny::sliderInput(ns("ora_n"), "Terms shown", 5, 40, 15)
         ),
-        shiny::plotOutput(ns("ora_plot_out"), height = "620px"),
+        plot_slot(ns("ora_plot_out"), height = "620px"),
         DT::DTOutput(ns("ora_table")),
         shiny::downloadButton(ns("dl_ora"), "Download CSV", class = "btn-sm")
       )
@@ -84,7 +84,7 @@ mod_enrichment_ui <- function(id) {
                            plotly_output(ns("ud_plot"), height = "650px"),
                            DT::DTOutput(ns("ud_table"))),
           bslib::nav_panel("Across contrasts",
-                           shiny::plotOutput(ns("ud_compare"), height = "750px"))
+                           plot_slot(ns("ud_compare"), height = "750px"))
         )
       )
     ),
@@ -109,7 +109,7 @@ mod_enrichment_ui <- function(id) {
           shiny::selectInput(ns("gsea_pathway"), "Pathway (pathway log2FC)",
                              choices = NULL)
         ),
-        shiny::plotOutput(ns("gsea_plot_out"), height = "620px"),
+        plot_slot(ns("gsea_plot_out"), height = "620px"),
         DT::DTOutput(ns("gsea_table")),
         shiny::downloadButton(ns("dl_gsea"), "Download CSV", class = "btn-sm")
       )
@@ -129,7 +129,7 @@ mod_enrichment_ui <- function(id) {
           shiny::checkboxInput(ns("ss_isolate"),
                                "Only samples in the active contrast", TRUE)
         ),
-        shiny::plotOutput(ns("ss_plot"), height = "720px"),
+        plot_slot(ns("ss_plot"), height = "720px"),
         shiny::downloadButton(ns("dl_ss"), "Download scores (CSV)",
                               class = "btn-sm")
       )
@@ -152,7 +152,7 @@ mod_enrichment_ui <- function(id) {
           shiny::helpText("GO-BP over-representation across contrasts",
                           "(clusterProfiler::compareCluster).")
         ),
-        shiny::plotOutput(ns("cmp_plot"), height = "720px")
+        plot_slot(ns("cmp_plot"), height = "720px")
       )
     )
   )
@@ -183,10 +183,18 @@ mod_enrichment_server <- function(id, state) {
       res
     })
 
-    output$ora_plot_out <- shiny::renderPlot({
-      ora_res()
-      safe_plot(plot_omni_ora(state$obj, plot_type = input$ora_plot,
-                              show_n = input$ora_n))
+    # Dot plot: the package's interactive enrichment plot (hover shows the
+    # term's genes). Network views (cnet / emap) are ggraph drawings and stay
+    # images.
+    output$ora_plot_out <- render_smart({
+      res <- ora_res()
+      if (identical(input$ora_plot, "dot") && pkgs_ok(c("plotly", "htmltools")))
+        safe_widget(plot_omni_enrichment_interactive(
+          res, n_top = input$ora_n, width = NULL, height = NULL,
+          title = paste("GO", input$ora_ont, "--", state$obj$active_contrast)))[[1]]
+      else
+        safe_plot(plot_omni_ora(state$obj, plot_type = input$ora_plot,
+                                show_n = input$ora_n))
     })
     output$ora_table <- DT::renderDT({
       df <- as_result_df(ora_res())
@@ -249,7 +257,7 @@ mod_enrichment_server <- function(id, state) {
       w[[2]]
     })
 
-    output$ud_compare <- shiny::renderPlot({
+    output$ud_compare <- render_smart({
       keys <- input$ud_cmp
       shiny::validate(shiny::need(length(keys) > 0,
                                   "Run Up/Down ORA on one or more contrasts first."))
@@ -289,7 +297,7 @@ mod_enrichment_server <- function(id, state) {
                                selected = shiny::isolate(input$gsea_pathway))
     })
 
-    output$gsea_plot_out <- shiny::renderPlot({
+    output$gsea_plot_out <- render_smart({
       gsea_res()
       obj <- state$obj
       switch(input$gsea_plot,
@@ -327,7 +335,7 @@ mod_enrichment_server <- function(id, state) {
       obj$advanced_ssgsea
     })
 
-    output$ss_plot <- shiny::renderPlot({
+    output$ss_plot <- render_smart({
       ss_scores()
       safe_plot(plot_omni_ssgsea_heatmap(state$obj, show_n = input$ss_n,
                                          isolate_contrast = input$ss_isolate))
@@ -351,7 +359,7 @@ mod_enrichment_server <- function(id, state) {
            pval = as.numeric(input$cmp_pval), n = input$cmp_n)
     })
 
-    output$cmp_plot <- shiny::renderPlot({
+    output$cmp_plot <- render_smart({
       a   <- cmp_args()
       obj <- need_contrast(state)
       shiny::withProgress(message = "Comparing contrasts", value = 0.5,

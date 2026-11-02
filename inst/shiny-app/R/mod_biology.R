@@ -34,9 +34,9 @@ mod_biology_ui <- function(id) {
         ),
         bslib::navset_underline(
           bslib::nav_panel("Activity",
-                           shiny::plotOutput(ns("tf_activity"), height = "650px")),
+                           plot_slot(ns("tf_activity"), height = "650px")),
           bslib::nav_panel("TF-target network",
-                           shiny::plotOutput(ns("tf_network"), height = "700px"))
+                           plot_slot(ns("tf_network"), height = "700px"))
         )
       )
     ),
@@ -61,7 +61,7 @@ mod_biology_ui <- function(id) {
           shiny::sliderInput(ns("string_degree"), "Min node degree", 1, 10, 1),
           shiny::checkboxInput(ns("string_hubs"), "Label hubs", TRUE)
         ),
-        shiny::plotOutput(ns("string_plot"), height = "700px")
+        plot_slot(ns("string_plot"), height = "700px")
       )
     ),
 
@@ -86,9 +86,9 @@ mod_biology_ui <- function(id) {
         ),
         bslib::navset_underline(
           bslib::nav_panel("Heatmap",
-                           shiny::plotOutput(ns("deconv_heat"), height = "650px")),
+                           plot_slot(ns("deconv_heat"), height = "650px")),
           bslib::nav_panel("Correlation",
-                           shiny::plotOutput(ns("deconv_corr"), height = "600px")),
+                           plot_slot(ns("deconv_corr"), height = "600px")),
           bslib::nav_panel("Table", DT::DTOutput(ns("deconv_table")),
                            shiny::downloadButton(ns("dl_deconv"), "Download CSV",
                                                  class = "btn-sm"))
@@ -134,13 +134,13 @@ mod_biology_server <- function(id, state) {
 
     tf_group <- shiny::reactive(if (input$tf_mode == "samples") input$tf_group)
 
-    output$tf_activity <- shiny::renderPlot(safe_plot(
+    output$tf_activity <- render_smart(safe_plot(
       plot_omni_tf_activity(tf_obj(), n = input$tf_n, group = tf_group(),
                             min_regulon = input$tf_min_reg)))
-    output$tf_network <- shiny::renderPlot(safe_plot(
+    output$tf_network <- render_smart(safe_plot(
       plot_omni_tf_network(tf_obj(), n_tfs = min(input$tf_n, 40),
                            n_targets = input$tf_targets,
-                           plot_type = "static", group = tf_group(),
+                           plot_type = network_type(), group = tf_group(),
                            min_regulon = input$tf_min_reg)))
 
     # ---- STRING ------------------------------------------------------------
@@ -158,11 +158,11 @@ mod_biology_server <- function(id, state) {
       if (!is.null(out)) state$obj <- out
     })
 
-    output$string_plot <- shiny::renderPlot({
+    output$string_plot <- render_smart({
       obj <- need_obj(state)
       shiny::validate(shiny::need(obj$string_network,
                                   "Click 'Query STRING' (requires DE results)."))
-      safe_plot(plot_omni_string_network(obj, plot_type = "static",
+      safe_plot(plot_omni_string_network(obj, plot_type = network_type(),
                                          min_degree = input$string_degree,
                                          label_hubs = input$string_hubs))
     })
@@ -184,10 +184,10 @@ mod_biology_server <- function(id, state) {
       obj
     })
 
-    output$deconv_heat <- shiny::renderPlot(safe_plot(
+    output$deconv_heat <- render_smart(safe_plot(
       plot_omni_deconv_heatmap(deconv_obj(),
                                aggregate_main = input$deconv_aggregate)))
-    output$deconv_corr <- shiny::renderPlot({
+    output$deconv_corr <- render_smart({
       shiny::validate(shiny::need(nzchar(input$deconv_feature),
                                   "Enter a gene or pathway name."))
       safe_plot(plot_omni_deconv_corr(deconv_obj(),

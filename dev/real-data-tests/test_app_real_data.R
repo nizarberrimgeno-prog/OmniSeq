@@ -30,7 +30,7 @@ testServer(function(input, output, session) {
   session$setInputs(`de-lfc_thresh` = 1, `de-pval_thresh` = "0.05", `de-top_n` = 10,
                     `de-heat_n` = 40, `de-heat_genes` = "", `de-color_by` = "Treatment",
                     `de-shape_by` = "CellLine", `de-sig_only` = TRUE)
-  for (o in c("volcano", "volcano_int", "heatmap", "top_genes", "table"))
+  for (o in c("volcano", "heatmap", "top_genes", "table"))
     ok(paste("de", o), session$getOutput(paste0("de-", o)))
 
   st$obj <- omni_set_contrast(st$obj, "Treatment_AZA_ITF_vs_Mock")

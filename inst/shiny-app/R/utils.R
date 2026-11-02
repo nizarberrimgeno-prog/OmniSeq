@@ -113,6 +113,177 @@ render_plotly <- function(expr, env = parent.frame()) {
   plotly::renderPlotly(substitute(expr), env = env, quoted = TRUE)
 }
 
+# ---- Interactive plot slots ----------------------------------------------------
+# Every plot in the app goes through plot_slot() / render_smart():
+#   - ggplot results are converted to plotly (hover, zoom, pan); ggrepel
+#     label layers become plain text so labels survive the conversion
+#   - htmlwidgets (plotly, visNetwork) are shown as they are
+#   - anything else (pheatmap, base graphics, patchwork, ggraph) is drawn to
+#     a PNG and shown as an image
+# Without plotly installed every plot falls back to the image.
+
+plot_slot <- function(id, height = "450px") {
+  shiny::div(class = "omni-plot-slot", style = sprintf("height: %s;", height),
+             shiny::uiOutput(id, style = "height: 100%;"))
+}
+
+.omni_static_classes <- c("patchwork", "ggraph", "ggmatrix")
+
+# Network plots (STRING, TF network, WGCNA hubs) have an interactive
+# visNetwork mode in the package; use it when visNetwork is installed.
+network_type <- function() if (pkgs_ok("visNetwork")) "interactive" else "static"
+
+.omni_repel_to_text <- function(p) {
+  for (i in seq_along(p$layers)) {
+    if (inherits(p$layers[[i]]$geom, c("GeomTextRepel", "GeomLabelRepel"))) {
+      keep <- intersect(names(p$layers[[i]]$aes_params),
+                        c("size", "colour", "alpha", "family", "fontface"))
+      p$layers[[i]]$geom        <- ggplot2::GeomText
+      p$layers[[i]]$geom_params <- list(na.rm = TRUE)
+      p$layers[[i]]$aes_params  <- p$layers[[i]]$aes_params[keep]
+    }
+  }
+  p
+}
+
+# Multi-panel ggplot results (patchwork, enrichplot's gglist) -> plotly
+# subplots, one converted panel at a time.
+.omni_panels_to_plotly <- function(val) {
+  panels <- if (inherits(val, "patchwork")) lapply(seq_along(val), function(i) val[[i]])
+            else unclass(val)
+  if (length(panels) < 2 || !all(vapply(panels, inherits, logical(1), "ggplot")))
+    return(NULL)
+  ws <- lapply(panels, function(p) plotly::ggplotly(.omni_repel_to_text(p)))
+  # One legend: the panels usually share their colour mapping.
+  ws[-length(ws)] <- lapply(ws[-length(ws)], plotly::style, showlegend = FALSE)
+  stacked <- inherits(val, "gglist")  # enrichplot running-score layout
+  out <- plotly::subplot(ws, nrows = if (stacked) length(ws) else 1,
+                         shareX = stacked, titleX = TRUE, titleY = TRUE,
+                         margin = 0.05)
+  if (stacked) return(out)
+  # Side-by-side panels: subplot keeps only one title, so put each panel's
+  # own title above it.
+  titles <- vapply(panels, function(p) p$labels$title %||% "", character(1))
+  n <- length(panels)
+  plotly::layout(out, title = list(text = ""), margin = list(t = 60),
+                 annotations = lapply(seq_len(n), function(i) list(
+                   text = titles[i], x = (i - 0.5) / n, y = 1.04,
+                   xref = "paper", yref = "paper", showarrow = FALSE,
+                   xanchor = "center", yanchor = "bottom", font = list(size = 14))))
+}
+
+# pheatmap only draws; render_smart() traces pheatmap::pheatmap() to keep the
+# matrix and settings it was called with, then redraws them as a plotly
+# heatmap in pheatmap's clustered row/column order.
+.omni_trace_pheatmap <- function(cap) {
+  if (!pkgs_ok("pheatmap")) return(FALSE)
+  suppressMessages(trace(
+    "pheatmap", where = asNamespace("pheatmap"), print = FALSE,
+    tracer = bquote(assign("args", list(
+      mat = mat, scale = scale, color = color, main = main),
+      envir = .(cap)))))
+  TRUE
+}
+
+.omni_pheatmap_to_plotly <- function(val, args) {
+  m <- as.matrix(args$mat)
+  if (identical(args$scale, "row")) m <- t(scale(t(m)))
+  if (identical(args$scale, "column")) m <- scale(m)
+  ord <- function(tree, n) if (is.list(tree) && !is.null(tree$order)) tree$order else seq_len(n)
+  m <- m[ord(val$tree_row, nrow(m)), ord(val$tree_col, ncol(m)), drop = FALSE]
+  scaled <- args$scale %in% c("row", "column")
+  plotly::plot_ly(
+    x = colnames(m), y = rownames(m), z = m, type = "heatmap",
+    colors = args$color, zmid = if (scaled) 0,
+    hovertemplate = paste0("%{y}<br>%{x}<br>", if (scaled) "z-score" else "value",
+                           ": %{z:.3f}<extra></extra>")) |>
+    plotly::layout(title = list(text = gsub("\n", "<br>", args$main %||% "")),
+                   yaxis = list(autorange = "reversed", title = ""),
+                   xaxis = list(title = "", tickangle = -45))
+}
+
+.omni_png_tag <- function(file) {
+  shiny::tags$img(src = base64enc::dataURI(file = file, mime = "image/png"),
+                  style = "width: 100%; height: 100%; object-fit: contain;")
+}
+
+# Internal column names that ggplotly copies into hover text
+.omni_hover_labels <- c(".group" = "Contrast", "neglog10padj" = "-log10(padj)",
+                        "log2FoldChange" = "log2FC", "padj" = "padj")
+
+.omni_fill <- function(w) {
+  w$width <- "100%"; w$height <- "100%"
+  if (inherits(w, "plotly")) {
+    w <- plotly::plotly_build(w)
+    w$x$data <- lapply(w$x$data, function(tr) {
+      if (is.character(tr$text))
+        for (k in names(.omni_hover_labels))
+          tr$text <- gsub(paste0("(^|<br />)", k, ":"),
+                          paste0("\\1", .omni_hover_labels[[k]], ":"),
+                          tr$text, perl = TRUE)
+      tr
+    })
+    # Toolbar only on hover, so it does not sit on top of the plot title
+    w <- plotly::config(w, displaylogo = FALSE, displayModeBar = "hover")
+  }
+  w
+}
+
+render_smart <- function(expr, env = parent.frame()) {
+  force(env)  # capture the caller's frame now, not inside renderUI
+  expr <- substitute(expr)
+  shiny::renderUI({
+    png_file <- tempfile(fileext = ".png")
+    grDevices::png(png_file, width = 1100, height = 760, res = 110)
+    dev <- grDevices::dev.cur()
+    # Package plot helpers sometimes print() widgets; keep that from opening
+    # a browser window on the machine running the app.
+    old <- options(viewer = function(...) invisible(NULL),
+                   browser = function(...) invisible(NULL))
+    cap    <- new.env()
+    traced <- pkgs_ok("plotly") && .omni_trace_pheatmap(cap)
+    val <- tryCatch(
+      eval(expr, env),
+      finally = {
+        options(old)
+        if (traced) suppressMessages(untrace("pheatmap", where = asNamespace("pheatmap")))
+        if (dev %in% grDevices::dev.list()) grDevices::dev.off(dev)
+      })
+
+    if (inherits(val, "htmlwidget"))
+      return(.omni_fill(val))
+
+    if (inherits(val, "pheatmap") && !is.null(cap$args)) {
+      w <- tryCatch(.omni_pheatmap_to_plotly(val, cap$args), error = function(e) NULL)
+      if (!is.null(w)) return(.omni_fill(w))
+    }
+
+    if (inherits(val, c("patchwork", "gglist")) && pkgs_ok("plotly")) {
+      w <- tryCatch(suppressWarnings(suppressMessages(.omni_panels_to_plotly(val))),
+                    error = function(e) NULL)
+      if (!is.null(w)) return(.omni_fill(w))
+    }
+
+    is_gg <- inherits(val, c("gg", "ggplot")) &&
+      !inherits(val, .omni_static_classes)
+    if (is_gg && pkgs_ok("plotly")) {
+      w <- tryCatch(suppressWarnings(suppressMessages(
+        plotly::ggplotly(.omni_repel_to_text(val)))), error = function(e) NULL)
+      if (!is.null(w)) return(.omni_fill(w))
+    }
+
+    # Image fallback. A ggplot that was only returned (not printed) has not
+    # been drawn on the capture device yet.
+    if (inherits(val, c("gg", "ggplot", "patchwork"))) {
+      grDevices::png(png_file, width = 1100, height = 760, res = 110)
+      tryCatch(print(val), finally = grDevices::dev.off())
+    }
+    shiny::validate(shiny::need(file.exists(png_file) && file.size(png_file) > 2000,
+                                "Nothing to plot."))
+    .omni_png_tag(png_file)
+  })
+}
+
 # DE results table for a contrast as a plain data.frame with a Feature column.
 de_table <- function(obj, contrast = NULL) {
   res <- omni_results(obj, contrast = contrast)
@@ -243,7 +414,7 @@ plot_card <- function(title, output_id, height = "450px", ...) {
     full_screen = TRUE,
     bslib::card_header(title),
     ...,
-    shiny::plotOutput(output_id, height = height)
+    plot_slot(output_id, height = height)
   )
 }
 

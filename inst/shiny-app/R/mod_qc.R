@@ -43,15 +43,15 @@ mod_qc_server <- function(id, state) {
       obj
     })
 
-    output$libsize <- shiny::renderPlot(
+    output$libsize <- render_smart(
       safe_plot(plot_omni_qc_basics(qc_obj(), plot_type = "library_size")))
-    output$detected <- shiny::renderPlot(
+    output$detected <- render_smart(
       safe_plot(plot_omni_qc_basics(qc_obj(), plot_type = "detected_genes")))
-    output$distance <- shiny::renderPlot(
+    output$distance <- render_smart(
       safe_plot(plot_omni_qc_advanced(qc_obj(), plot_type = "distance")))
-    output$mean_var <- shiny::renderPlot(
+    output$mean_var <- render_smart(
       safe_plot(plot_omni_qc_advanced(qc_obj(), plot_type = "mean_var")))
-    output$pca <- shiny::renderPlot(
+    output$pca <- render_smart(
       safe_plot(plot_omni_qc_advanced(qc_obj(), plot_type = "pca_compare")))
   })
 }

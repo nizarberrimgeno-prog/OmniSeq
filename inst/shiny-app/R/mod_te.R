@@ -50,17 +50,17 @@ mod_te_ui <- function(id) {
     ),
     bslib::navset_card_tab(
       bslib::nav_panel("TE volcano",
-                       shiny::plotOutput(ns("volcano"), height = "580px")),
+                       plot_slot(ns("volcano"), height = "580px")),
       bslib::nav_panel("Families",
-                       shiny::plotOutput(ns("family"), height = "620px")),
+                       plot_slot(ns("family"), height = "620px")),
       bslib::nav_panel("Class composition",
-                       shiny::plotOutput(ns("pie"), height = "520px")),
+                       plot_slot(ns("pie"), height = "520px")),
       bslib::nav_panel("log2FC density",
-                       shiny::plotOutput(ns("density"), height = "520px")),
+                       plot_slot(ns("density"), height = "520px")),
       bslib::nav_panel("Family heatmap",
-                       shiny::plotOutput(ns("heatmap"), height = "700px")),
+                       plot_slot(ns("heatmap"), height = "700px")),
       bslib::nav_panel("GREAT",
-                       shiny::plotOutput(ns("great"), height = "600px")),
+                       plot_slot(ns("great"), height = "600px")),
       bslib::nav_panel("Family table", DT::DTOutput(ns("table")),
                        shiny::downloadButton(ns("dl_table"), "Download CSV",
                                              class = "btn-sm"))
@@ -121,19 +121,19 @@ mod_te_server <- function(id, state) {
       obj
     })
 
-    output$volcano <- shiny::renderPlot(safe_plot(
+    output$volcano <- render_smart(safe_plot(
       plot_omni_te_volcano(te_contrast(), lfc_thresh = input$lfc,
                            pval_thresh = as.numeric(input$pval),
                            top_n = input$top_n, label_col = input$label_col)))
-    output$family <- shiny::renderPlot(safe_plot(
+    output$family <- render_smart(safe_plot(
       plot_omni_te_family(fam_obj(), n_families = input$n_fam,
                           color_by = input$color_by)))
-    output$pie <- shiny::renderPlot(safe_plot(plot_omni_te_class_pie(fam_obj())))
-    output$density <- shiny::renderPlot(safe_plot(
+    output$pie <- render_smart(safe_plot(plot_omni_te_class_pie(fam_obj())))
+    output$density <- render_smart(safe_plot(
       plot_omni_te_lfc_density(te_contrast(), min_loci = input$min_loci)))
-    output$heatmap <- shiny::renderPlot(safe_plot(
+    output$heatmap <- render_smart(safe_plot(
       plot_omni_te_heatmap(te_contrast(), n_families = input$n_fam)))
-    output$great <- shiny::renderPlot({
+    output$great <- render_smart({
       obj <- te_contrast()
       shiny::validate(shiny::need(obj$te_great,
                                   "Upload TE coordinates and run proximity + GREAT."))

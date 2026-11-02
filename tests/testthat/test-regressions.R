@@ -90,6 +90,9 @@ test_that("interactive volcano uses the documented Up/Down colours", {
   names(cols) <- vapply(built$x$data, function(t) sub(" \\(n=.*", "", t$name),
                         character(1))
   expect_equal(unname(cols[c("Up", "Down")]), c("#E74C3C", "#2980B9"))
+  # R colour names such as "grey75" are not valid plotly colours (plotly
+  # silently drew the background points in its default blue)
+  expect_match(cols[["Not significant"]], "^#[0-9A-Fa-f]{6}$")
 })
 
 test_that("plot_omni_deconv_heatmap keeps non-immune cell types", {

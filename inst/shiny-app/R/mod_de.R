@@ -76,37 +76,34 @@ mod_de_ui <- function(id) {
     bslib::navset_card_tab(
       bslib::nav_panel(
         "Volcano",
-        shiny::plotOutput(ns("volcano"), height = "560px"),
+        shiny::helpText("Hover a point for gene, log2FC and padj; drag to zoom,",
+                        "double-click to reset. The PNG download is the labelled",
+                        "static version."),
+        plot_slot(ns("volcano"), height = "600px"),
         shiny::downloadButton(ns("dl_volcano"), "PNG", class = "btn-sm")
       ),
       bslib::nav_panel(
-        "Interactive volcano",
-        deps_notice("plotly"),
-        shiny::helpText("Hover a point for gene, log2FC and padj; drag to zoom."),
-        plotly_output(ns("volcano_int"), height = "600px")
-      ),
-      bslib::nav_panel(
         "MA",
-        shiny::plotOutput(ns("ma"), height = "560px"),
+        plot_slot(ns("ma"), height = "560px"),
         shiny::downloadButton(ns("dl_ma"), "PNG", class = "btn-sm")
       ),
       bslib::nav_panel(
         "Heatmap",
-        shiny::plotOutput(ns("heatmap"), height = "700px"),
+        plot_slot(ns("heatmap"), height = "700px"),
         shiny::downloadButton(ns("dl_heatmap"), "PNG", class = "btn-sm")
       ),
       bslib::nav_panel(
         "PCA",
-        shiny::plotOutput(ns("pca"), height = "560px"),
+        plot_slot(ns("pca"), height = "560px"),
         shiny::downloadButton(ns("dl_pca"), "PNG", class = "btn-sm")
       ),
       bslib::nav_panel(
         "Top features",
-        shiny::plotOutput(ns("top_genes"), height = "650px")
+        plot_slot(ns("top_genes"), height = "650px")
       ),
       bslib::nav_panel(
         "p-value histogram",
-        shiny::plotOutput(ns("phist"), height = "450px")
+        plot_slot(ns("phist"), height = "450px")
       ),
       bslib::nav_panel(
         "Results table",
@@ -211,16 +208,18 @@ mod_de_server <- function(id, state) {
       sig  <- !is.na(df$padj) & df$padj < pval()
       up   <- sum(sig & df$log2FoldChange >  input$lfc_thresh)
       down <- sum(sig & df$log2FoldChange < -input$lfc_thresh)
+      # Values sized so they stay on one line in a quarter-width box.
+      num <- function(x) shiny::span(style = "font-size: 1.6rem; white-space: nowrap;",
+                                     format(x, big.mark = ","))
       bslib::layout_column_wrap(
-        width = 1 / 4, fill = FALSE,
+        width = "180px", fill = FALSE,
         bslib::value_box("Active contrast",
-                         shiny::span(style = "font-size: 1.1rem; word-break: break-word;",
+                         shiny::span(style = "font-size: 1.05rem; word-break: break-word;",
                                      state$obj$active_contrast),
                          theme = "primary"),
-        bslib::value_box("Tested features", format(sum(!is.na(df$padj)),
-                                                   big.mark = ",")),
-        bslib::value_box("Up-regulated", up, theme = "danger"),
-        bslib::value_box("Down-regulated", down, theme = "info")
+        bslib::value_box("Tested", num(sum(!is.na(df$padj)))),
+        bslib::value_box("Up", num(up), theme = "danger"),
+        bslib::value_box("Down", num(down), theme = "info")
       )
     })
 
@@ -243,25 +242,29 @@ mod_de_server <- function(id, state) {
                                        color_by = .nz(input$color_by),
                                        shape_by = .nz(input$shape_by))
 
-    output$volcano   <- shiny::renderPlot(safe_plot(volcano_fn()))
-    output$ma        <- shiny::renderPlot(safe_plot(ma_fn()))
-    output$heatmap   <- shiny::renderPlot(safe_plot(heatmap_fn()))
-    output$pca       <- shiny::renderPlot(safe_plot(pca_fn()))
-    output$top_genes <- shiny::renderPlot(safe_plot(
+    # Interactive volcano (hover = gene); falls back to the static,
+    # labelled plot when plotly is not installed.
+    output$volcano <- render_smart({
+      obj <- need_contrast(state)
+      if (pkgs_ok(c("plotly", "htmltools")))
+        safe_widget(plot_omni_volcano_interactive(obj,
+                                                  pval_thresh = pval(),
+                                                  lfc_thresh  = input$lfc_thresh,
+                                                  width = NULL, height = NULL))
+      else safe_plot(volcano_fn())
+    })
+    output$ma        <- render_smart(safe_plot(ma_fn()))
+    output$heatmap   <- render_smart(safe_plot(heatmap_fn()))
+    output$pca       <- render_smart(safe_plot(pca_fn()))
+    output$top_genes <- render_smart(safe_plot(
       plot_omni_top_genes(need_contrast(state),
                           n           = 12,
                           pval_thresh = pval(),
                           lfc_thresh  = input$lfc_thresh,
                           color_by    = .nz(input$color_by),
                           shape_by    = .nz(input$shape_by))))
-    output$phist <- shiny::renderPlot(safe_plot(
+    output$phist <- render_smart(safe_plot(
       plot_omni_pvalue_hist(need_contrast(state))))
-    output$volcano_int <- render_plotly({
-      safe_widget(plot_omni_volcano_interactive(need_contrast(state),
-                                                pval_thresh = pval(),
-                                                lfc_thresh  = input$lfc_thresh,
-                                                width = NULL, height = NULL))
-    })
 
     table_df <- shiny::reactive({
       df <- res_df()

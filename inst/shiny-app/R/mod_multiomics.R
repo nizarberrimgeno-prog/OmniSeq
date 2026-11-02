@@ -97,11 +97,11 @@ mod_multiomics_ui <- function(id) {
     ),
     bslib::navset_card_tab(
       bslib::nav_panel("Sensor scores",
-                       shiny::plotOutput(ns("sens_plot"), height = "520px"),
+                       plot_slot(ns("sens_plot"), height = "520px"),
                        shiny::downloadButton(ns("dl_sens"), "Download CSV",
                                              class = "btn-sm")),
       bslib::nav_panel("Sensor heatmap",
-                       shiny::plotOutput(ns("sens_heat"), height = "600px")),
+                       plot_slot(ns("sens_heat"), height = "600px")),
       bslib::nav_panel(
         "Sensor vs IRGs",
         shiny::fluidRow(
@@ -110,18 +110,18 @@ mod_multiomics_ui <- function(id) {
           shiny::column(6, shiny::selectInput(ns("irg_shape"), "Shape by",
                                               choices = NULL))
         ),
-        shiny::plotOutput(ns("sens_irg"), height = "560px")
+        plot_slot(ns("sens_irg"), height = "560px")
       ),
       bslib::nav_panel("TE-gene correlation",
-                       shiny::plotOutput(ns("corr_plot"), height = "600px")),
+                       plot_slot(ns("corr_plot"), height = "600px")),
       bslib::nav_panel("WGCNA TE traits",
-                       shiny::plotOutput(ns("wt_plot"), height = "650px")),
+                       plot_slot(ns("wt_plot"), height = "650px")),
       bslib::nav_panel("DIABLO",
-                       shiny::plotOutput(ns("dia_plot"), height = "560px"),
+                       plot_slot(ns("dia_plot"), height = "560px"),
                        shiny::verbatimTextOutput(ns("dia_info"))),
       bslib::nav_panel("Mediation",
-                       shiny::plotOutput(ns("med_plot"), height = "480px"),
-                       shiny::plotOutput(ns("med_path"), height = "420px"))
+                       plot_slot(ns("med_plot"), height = "480px"),
+                       plot_slot(ns("med_path"), height = "420px"))
     )
   )
 }
@@ -267,18 +267,18 @@ mod_multiomics_server <- function(id, state) {
                                selected = if ("IRG_S_Score" %in% num) "IRG_S_Score")
     })
 
-    output$sens_plot <- shiny::renderPlot(safe_plot(
+    output$sens_plot <- render_smart(safe_plot(
       plot_omni_sensor_scores(sens_obj(), group_col = input$sens_col)))
-    output$sens_heat <- shiny::renderPlot(safe_plot(
+    output$sens_heat <- render_smart(safe_plot(
       plot_omni_sensor_heatmap(sens_obj())))
-    output$sens_irg <- shiny::renderPlot(safe_plot(
+    output$sens_irg <- render_smart(safe_plot(
       plot_omni_sensor_irgs_corr(sens_obj(), color_col = input$irg_color,
                                  shape_col = .nz(input$irg_shape))))
     output$dl_sens <- csv_download("sensor_scores.csv",
                                    function() sens_obj()$sensor_scores$scores)
 
     # ---- TE-gene correlation ----------------------------------------------
-    output$corr_plot <- shiny::renderPlot({
+    output$corr_plot <- render_smart({
       p <- pair()
       genes <- trimws(strsplit(input$corr_genes %||% "", "[\n,;]")[[1]])
       genes <- genes[nzchar(genes)]
@@ -299,7 +299,7 @@ mod_multiomics_server <- function(id, state) {
       if (!is.null(out)) set_gene(out)
     })
 
-    output$wt_plot <- shiny::renderPlot({
+    output$wt_plot <- render_smart({
       g <- pair()$gene
       shiny::validate(shiny::need(
         nzchar(input$wt_key %||% "") && !is.null(g$wgcna[[input$wt_key]]$te_trait_cor),
@@ -324,7 +324,7 @@ mod_multiomics_server <- function(id, state) {
       shiny::validate(shiny::need(length(g$diablo) > 0, "Click 'Run DIABLO'."))
       g$diablo[[length(g$diablo)]]
     })
-    output$dia_plot <- shiny::renderPlot({
+    output$dia_plot <- render_smart({
       e <- dia_entry()
       shiny::validate(shiny::need(requireNamespace("mixOmics", quietly = TRUE),
                                   "mixOmics is not installed."))
@@ -375,8 +375,8 @@ mod_multiomics_server <- function(id, state) {
                                   "Score sensors, then click 'Run mediation'."))
       g
     })
-    output$med_plot <- shiny::renderPlot(safe_plot(plot_omni_mediation(med_obj())))
-    output$med_path <- shiny::renderPlot(safe_plot(
+    output$med_plot <- render_smart(safe_plot(plot_omni_mediation(med_obj())))
+    output$med_path <- render_smart(safe_plot(
       plot_omni_mediation_path(med_obj())))
   })
 }
